@@ -1,7 +1,7 @@
 from consumer import Consumer
 
 # * Import whatever job should be called here
-# from my_module import execute_job
+# from my_module import example_callback
 
 
 def example_callback():
@@ -12,7 +12,7 @@ if __name__ == "__main__":
     # Instantiate our listener with the correct details
     consume = Consumer(
         # * Pass in the job to be executed here
-        job=example_callback,
+        callback=example_callback,
         # ? Optional -> pass in the Queue credentials here instead of loading from env
         # username="my_username",
         # password="my_password",

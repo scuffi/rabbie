@@ -21,7 +21,7 @@ class Consumer:
 
     def __init__(
         self,
-        job: Callable,
+        callback: Callable,
         # All parameters below must be passed in as KW args
         *,
         queue_name: Optional[str] = None,
@@ -30,7 +30,7 @@ class Consumer:
         username: Optional[str],
         password: Optional[str],
     ):
-        self.job = job
+        self.callback = callback or Queue._unset_property("callback")
         self.queue_name = queue_name or Queue.QUEUE_NAME
         self._host = host or Queue.HOST
         self._port = port or Queue.PORT
@@ -58,14 +58,9 @@ class Consumer:
         log.info(channel)
         log.info(method)
         log.info(properties)
-
-        if self.job is None:
-            log.critical("Received a new message, but no process job is defined!")
-            return
-
         # Run the configured Job in a new Process, pass the arguments down
         # TODO: If we are always pushing JSON data, this should deserialize into an object here
-        p = Process(target=self.job, args=(body))
+        p = Process(target=self.callback, args=(body))
         p.start()
         p.join()
 
