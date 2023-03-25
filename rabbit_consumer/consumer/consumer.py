@@ -8,7 +8,6 @@ from loguru import logger as log
 
 from .consumer_config import Queue
 
-
 class Consumer:
     """
     Listener holds all of the workers (processes) that will consume from the queue.
