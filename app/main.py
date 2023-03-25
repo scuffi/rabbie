@@ -1,18 +1,25 @@
-from loguru import logger as log
-
-from local_config import Queue
 from consumer import Consumer
+
+# * Import whatever job should be called here
+# from my_module import execute_job
+
+
+def example_callback():
+    ...
 
 
 if __name__ == "__main__":
-    log.success("Connecting workers to queue...")
-
     # Instantiate our listener with the correct details
     consume = Consumer(
-        connection_string=Queue.CONNECTION_URL,
-        queue_name=Queue.QUEUE_NAME,
-        job=Queue.JOB,
+        # * Pass in the job to be executed here
+        job=example_callback,
+        # ? Optional -> pass in the Queue credentials here instead of loading from env
+        # username="my_username",
+        # password="my_password",
     )
 
     # Start listening for messages
-    consume.consume(4)
+    # * Pass in the amount of workers (processes) you want to run, or leave empty for automatic configuration
+    consume.consume(workers=4)
+
+    # ! Code posted below this line will never be processed

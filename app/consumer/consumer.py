@@ -1,11 +1,12 @@
-import json
 from multiprocessing import Process, cpu_count
 import concurrent.futures
-from typing import Callable
+from typing import Callable, Optional
 
 import pika
 
 from loguru import logger as log
+
+from .consumer_config import Queue
 
 
 class Consumer:
@@ -18,10 +19,23 @@ class Consumer:
     The whole point of this is to allow the consumer to scale horizontally.
     """
 
-    def __init__(self, connection_string: str, queue_name: str, job: Callable):
-        self.queue_name = queue_name
-        self.connection_string = connection_string
+    def __init__(
+        self,
+        job: Callable,
+        # All parameters below must be passed in as KW args
+        *,
+        queue_name: Optional[str] = None,
+        host: Optional[str],
+        port: Optional[str],
+        username: Optional[str],
+        password: Optional[str],
+    ):
         self.job = job
+        self.queue_name = queue_name or Queue.QUEUE_NAME
+        self._host = host or Queue.HOST
+        self._port = port or Queue.PORT
+        self._username = username or Queue.USERNAME
+        self._password = password or Queue.PASSWORD
 
     def _get_max_workers(self, _default: int = 4):
         """

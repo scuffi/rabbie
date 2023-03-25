@@ -1,0 +1,4 @@
+[too.ruff]
+
+# Ignore Line too long (E501)
+ignore = ["E501"]
