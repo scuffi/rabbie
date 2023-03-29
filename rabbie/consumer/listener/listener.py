@@ -8,27 +8,41 @@ from loguru import logger as log
 from ...decoder import Decoder
 
 import pika
+
+
 class Listener:
-    def __init__(self, queue_name: str, callback: Callable, connection_parameters: pika.ConnectionParameters, workers: int = None, decoder: Decoder = None) -> None:
+    def __init__(
+        self,
+        queue_name: str,
+        callback: Callable,
+        connection_parameters: pika.ConnectionParameters,
+        workers: int = None,
+        decoder: Decoder = None,
+    ) -> None:
         self.queue_name = queue_name
         self.callback = callback
         self.connection_parameters = connection_parameters
         self.workers = workers
         self.decoder: Optional[Decoder] = decoder
-    
+
     def _callback(self, channel, method, properties, body):
         log.info(f"Received new message on queue '{self.queue_name}'")
-        log.info(channel)
-        log.info(method)
-        log.info(properties)
+        # log.info(channel)
+        # log.info(method)
+        # log.info(properties)
         # Run the configured Job in a new Process, pass the arguments down
         if self.decoder:
             body = self.decoder.decode(body)
-            
+
         # TODO: Change this to work off of types rather than variable names
         callback_arguments = list(self.callback.__code__.co_varnames)
-        all_arguments = {"channel": channel, "method": method, "properties": properties, "body": body}
-        
+        all_arguments = {
+            "channel": channel,
+            "method": method,
+            "properties": properties,
+            "body": body,
+        }
+
         arguments = {k: v for k, v in all_arguments.items() if k in callback_arguments}
 
         p = Process(target=self.callback, kwargs=arguments)
@@ -62,7 +76,7 @@ class Listener:
             log.error(f"Failed to start worker: {e}")
             time.sleep(1)
             self._start_worker(index)
-            
+
     def start(self):
         """
         Execute each consumer in a new process in a PoolExecutor
@@ -72,7 +86,7 @@ class Listener:
         """
         # If an amount of workers has been passed in, use that, else, use the maximum amount of CPUs.
         workers = self.workers or self._get_max_workers()
-        
+
         for i in range(workers):
             p = Process(target=self._start_worker, args=(i,))
             p.start()

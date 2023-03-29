@@ -1,7 +1,6 @@
 from functools import wraps
 from typing import Optional, List, TYPE_CHECKING
 import time
-import sys
 
 from loguru import logger as log
 
@@ -32,7 +31,8 @@ class Consumer:
         port: Optional[str] = ConsumerConfig.PORT,
         username: Optional[str] = ConsumerConfig.USERNAME,
         password: Optional[str] = ConsumerConfig.PASSWORD,
-        default_decoder: Optional[Decoder] = None,
+        # TODO: Fix types to do with Decoders
+        default_decoder=None,
     ):
         self._host = host
         self._port = port
@@ -56,7 +56,7 @@ class Consumer:
         self,
         queue: str = ConsumerConfig.QUEUE_NAME,
         workers: int = 1,
-        decoder: Optional[Decoder] = None,
+        decoder=None,
     ):
         def decorator(function):
             # If no credentials are passed in, use the consumer_config preconfigured variables
@@ -86,5 +86,4 @@ class Consumer:
             listener.start()
 
         while True:
-            sys.stdout.flush()
             time.sleep(1)
