@@ -1,12 +1,18 @@
-from multiprocessing import Process, cpu_count
-import concurrent.futures
-from typing import Callable, Optional
-
-import pika
+from functools import wraps
+from typing import Optional, List, TYPE_CHECKING
+import time
+import sys
 
 from loguru import logger as log
 
-from .consumer_config import Queue
+import pika
+
+from .consumer_config import ConsumerConfig
+from .listener import Listener
+
+if TYPE_CHECKING:
+    from ..decoder import Decoder
+
 
 class Consumer:
     """
@@ -20,92 +26,65 @@ class Consumer:
 
     def __init__(
         self,
-        callback: Callable,
         # All parameters below must be passed in as KW args
         *,
-        queue_name: Optional[str] = None,
-        host: Optional[str],
-        port: Optional[str],
-        username: Optional[str],
-        password: Optional[str],
+        host: Optional[str] = ConsumerConfig.HOST,
+        port: Optional[str] = ConsumerConfig.PORT,
+        username: Optional[str] = ConsumerConfig.USERNAME,
+        password: Optional[str] = ConsumerConfig.PASSWORD,
+        default_decoder: Optional[Decoder] = None,
     ):
-        self.callback = callback or Queue._unset_property("callback")
-        self.queue_name = queue_name or Queue.QUEUE_NAME
-        self._host = host or Queue.HOST
-        self._port = port or Queue.PORT
-        self._username = username or Queue.USERNAME
-        self._password = password or Queue.PASSWORD
+        self._host = host
+        self._port = port
+        self._username = username
+        self._password = password
 
-    def _get_max_workers(self, _default: int = 4):
-        """
-        If the number of workers can be determined, return that number, otherwise return the default
-        value
+        self.default_decoder = default_decoder
 
-        Args:
-          _default (int): int = 4. Defaults to 4
+        self.listeners: List[Listener] = []
 
-        Returns:
-          The number of workers on the system.
-        """
-        try:
-            return cpu_count()
-        except NotImplementedError:
-            return _default
+    def _get_connection_details(self):
+        credentials = pika.PlainCredentials(self._username, self._password)
+        # Create the parameters for connection to the Queue
+        return pika.ConnectionParameters(
+            port=self._port,
+            host=self._host,
+            credentials=credentials,
+        )
 
-    def _callback(self, channel, method, properties, body):
-        log.info(f"Received new message on queue '{self.queue_name}'")
-        log.info(channel)
-        log.info(method)
-        log.info(properties)
-        # Run the configured Job in a new Process, pass the arguments down
-        # TODO: If we are always pushing JSON data, this should deserialize into an object here
-        p = Process(target=self.callback, args=(body))
-        p.start()
-        p.join()
-
-    def _start_worker(self, index: int):
-        try:
-            credentials = pika.PlainCredentials("user", "password")
-            # Create the parameters for connection to the Queue
-            parameters = pika.ConnectionParameters(
-                port=5672,
-                host="queue_service",
-                credentials=credentials,
+    def listen(
+        self,
+        queue: str = ConsumerConfig.QUEUE_NAME,
+        workers: int = 1,
+        decoder: Optional[Decoder] = None,
+    ):
+        def decorator(function):
+            # If no credentials are passed in, use the consumer_config preconfigured variables
+            # Instantiate a consumer object
+            ls = Listener(
+                callback=function,
+                queue_name=queue,
+                connection_parameters=self._get_connection_details(),
+                workers=workers,
+                decoder=decoder or self.default_decoder,
             )
 
-            # Create a BlockingConnection into the queue
-            connection = pika.BlockingConnection(parameters)
+            # Add the configured listener to the list of listeners to be called later
+            self.listeners.append(ls)
 
-            # Open a channel to receive messages through
-            channel = connection.channel()
+            @wraps(function)
+            def listener(*args, **kwargs):
+                return function(*args, **kwargs)
 
-            channel.queue_declare(queue=self.queue_name, durable=True)
-            channel.basic_qos(prefetch_count=1)
+            return listener
 
-            # TODO: Add the worker that consumed the data in here
-            channel.basic_consume(
-                queue=self.queue_name, on_message_callback=self._callback
-            )
+        return decorator
 
-            log.success(
-                f" [*] Waiting for messages from worker [{index + 1}]. To exit press CTRL+C"
-            )
+    def start(self):
+        for listener in self.listeners:
+            log.debug("Starting new listener")
+            listener.start()
 
-            channel.start_consuming()
-        except Exception as e:
-            log.error(e)
-
-    def consume(self, workers: int = None):
-        """
-        Execute each consumer in a new process in a PoolExecutor
-
-        Args:
-          workers (int): The amount of workers to start.
-        """
-        # If an amount of workers has been passed in, use that, else, use the maximum amount of CPUs.
-        workers = workers or self._get_max_workers()
-
-        # Execute each worker in a new process in a PoolExecutor
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            for i in range(workers):
-                executor.submit(self._start_worker, i)
+        while True:
+            sys.stdout.flush()
+            time.sleep(1)
