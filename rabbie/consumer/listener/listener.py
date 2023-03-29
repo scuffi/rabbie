@@ -8,6 +8,7 @@ from loguru import logger as log
 from ...decoder import Decoder
 
 import pika
+from pika.exceptions import AMQPError
 
 
 class Listener:
@@ -50,9 +51,8 @@ class Listener:
         p.join()
 
     def _start_worker(self, index: int):
+        log.debug("Opening new connection")
         try:
-            log.debug("Opening new connection")
-            sys.stdout.flush()
             # Create a BlockingConnection into the queue
             connection = pika.BlockingConnection(self.connection_parameters)
 
@@ -62,7 +62,6 @@ class Listener:
             channel.queue_declare(queue=self.queue_name, durable=True)
             channel.basic_qos(prefetch_count=1)
 
-            # TODO: Add the worker that consumed the data in here
             channel.basic_consume(
                 queue=self.queue_name, on_message_callback=self._callback
             )
@@ -72,9 +71,9 @@ class Listener:
             )
 
             channel.start_consuming()
-        except Exception as e:
-            log.error(f"Failed to start worker: {e}")
-            time.sleep(1)
+        except AMQPError as e:
+            log.error("Connection failed, retrying in 2s...")
+            time.sleep(2)
             self._start_worker(index)
 
     def start(self):

@@ -13,14 +13,14 @@ consumer = Consumer(
 
 @consumer.listen(queue="test", workers=1)
 def example_callback():
-    ...
+    log.info("hit this with no params")
 
 
 @consumer.listen(queue="test2", workers=2)
 def example2(body):
-    print(body)
+    log.info(body)
 
 
 if __name__ == "__main__":
     log.success("Starting consumers...")
-    consumer.start()
+    consumer.start(reload=True)
