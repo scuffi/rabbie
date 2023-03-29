@@ -1,3 +1,4 @@
 {
-    "docwriter.style": "Google"
+    "docwriter.style": "Google",
+    "python.linting.enabled": false
 }
