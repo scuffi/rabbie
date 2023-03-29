@@ -1,7 +1,7 @@
 import os
 
 
-class Queue:
+class ConsumerConfig:
     @staticmethod
     def _unset_property(property: str):
         """
