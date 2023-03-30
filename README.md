@@ -1,2 +1,2 @@
-# queue_consumer_template
-This template is a baseline repository of a Python consumer, consuming messages from a RabbitMQ service.
+# Rabbie
+Rabbie is a Python Package to help connection and development with RabbitMQ easier.
