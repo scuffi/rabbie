@@ -18,7 +18,7 @@ def example_callback():
 
 @consumer.listen(queue="test2", workers=2)
 def example2(body):
-    log.info(body)
+    log.debug(body)
 
 
 if __name__ == "__main__":
