@@ -29,7 +29,8 @@ class Supervisor:
             stat=os.stat, listdir=os.scandir, polling_interval=0.1
         )
 
-        self._observer.schedule(self._event_handler, path, recursive=recursive)
+        self._path = path
+        self._observer.schedule(self._event_handler, self._path, recursive=recursive)
 
         self.process: Optional[mp.Process] = None
 
@@ -50,7 +51,10 @@ class Supervisor:
         print("Restarting service...")
         self.stop()
         self.start()
-
+    
+    def listen(self):
+        print(f"Listening for changes in '{self._path}'")
+        self._observer.start()
 
 class FileChangeEvent(FileSystemEventHandler):
     def __init__(self, regex: str) -> None:
