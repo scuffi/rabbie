@@ -12,7 +12,7 @@
 import os
 import re
 import multiprocessing as mp
-from typing import Optional
+from typing import Optional, Callable
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers.polling import PollingObserverVFS
 
@@ -34,13 +34,22 @@ class Supervisor:
         self.process: Optional[mp.Process] = None
 
     def stop(self):
-        ...
+        if self.process:
+            print("Stopping runner")
+            print("Waiting for active tasks to conclude...")
+            self.process.join()
+            self.process = None
+            print("Runner stopped")
 
-    def start(self):
-        ...
+    def start(self, target: Callable):
+        self.process = mp.Process(target=target)
+        print("Starting runner")
+        self.process.start()
 
     def restart(self):
-        ...
+        print("Restarting service...")
+        self.stop()
+        self.start()
 
 
 class FileChangeEvent(FileSystemEventHandler):
@@ -60,4 +69,6 @@ class FileChangeEvent(FileSystemEventHandler):
         # This should counteract the directory check anyways, but check that our file path matches our regex
         if re.match(pattern=self.pattern, string=path):
             module = importfile(path)
+
+            print(f"Detected changes in {module.__name__}")
             importlib.reload(module)
