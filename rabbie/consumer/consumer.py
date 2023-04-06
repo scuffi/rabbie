@@ -1,7 +1,8 @@
 from functools import wraps
 from typing import Optional, List, TYPE_CHECKING
 import time
-import os
+from multiprocessing import Manager
+from multiprocessing.managers import ListProxy
 
 from loguru import logger as log
 
@@ -9,11 +10,13 @@ import pika
 
 from .consumer_config import ConsumerConfig
 from .listener import Listener
+
 from ..supervisor import Supervisor
+
+from ..decoder import JSONDecoder
 
 if TYPE_CHECKING:
     from ..decoder import Decoder
-
 
 class Consumer:
     """
@@ -50,7 +53,11 @@ class Consumer:
             credentials=credentials,
         )
 
+        self.manager = Manager()
+        # self.listeners: ListProxy = self.manager.list()
+            
         self.listeners: List[Listener] = []
+        self.running: List[Listener] = []
 
     def listen(
         self,
@@ -71,9 +78,15 @@ class Consumer:
 
             # Add the configured listener to the list of listeners to be called later
             self.listeners.append(ls)
+            
+            log.info("Registered new listener")
+            log.info(self.listeners)
+            log.info(function)
+            log.error(self)
 
             @wraps(function)
             def listener(*args, **kwargs):
+                # TODO: Check to see if when we call with arguments we can filter them out here -> if so, filter out based on type
                 return function(*args, **kwargs)
 
             return listener
@@ -87,18 +100,65 @@ class Consumer:
         Args:
           halt (bool): bool = True. Should calling this function halt the main thread?
         """
-        for listener in self.listeners:
-            log.debug("Starting new listener")
-            listener.start()
+        # from watchdog.observers.polling import PollingObserverVFS
+        # from watchdog.events import FileSystemEventHandler
+
+
+        # class Event(FileSystemEventHandler):
+        #     def on_any_event(self, event):
+        #         print(f"Reloading {event.src_path}")
+
+        # event_handler = Event()
+        # # observer = Observer()
+        # observer = PollingObserverVFS(
+        #     stat=os.stat, listdir=os.scandir, polling_interval=0.1
+        # )
+
+        # observer.schedule(event_handler, "./", recursive=True)
+        # # observer.start()
+        
+        log.success("Starting Service...")
 
         if reload:
-            supervisor = Supervisor(path="./")
+            # TODO: Pass the consumer in here, the consumer must be part of a Manager.
+            # TODO: This means that each process created, will refer to the same function, as this would create a new instance per process
+            
+            # TODO: This may mean that a Consumer must have ProcessListeners class, which is a manager that stores all of the listeners,
+            # TODO: this way it would allow for multiple places, including this main consumer, to refer to the same listener list.
+            supervisor = Supervisor("./", start_function=self._start_listeners, stop_function=self._stop_listeners)
             
             supervisor.listen()
-            supervisor.start(...) # TODO: Pass callable i.e. main loop here
-            
+        else:
+            self._start_listeners()
+
         self._halt(halt)
+        
+    def _start_listeners(self):
+        log.info(f"Starting {len(self.listeners)} listeners")
+        log.error(self)
+        for listener in self.listeners.copy():
+            log.debug("Starting new listener")
+            listener.start()
+            
+            self.listeners.remove(listener)
+            self.running.append(listener)
+            
+        
+    def _stop_listeners(self):
+        for listener in self.running:
+            listener.stop()
+            
+        self.running.clear()
 
     def _halt(self, halt: bool):
         while halt:
             time.sleep(1)
+
+
+consumer = Consumer(
+    host="queue_service",
+    port=5672,
+    username="user",
+    password="password",
+    default_decoder=JSONDecoder(),
+)

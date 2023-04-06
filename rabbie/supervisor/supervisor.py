@@ -13,18 +13,28 @@ import os
 import re
 import multiprocessing as mp
 from typing import Optional, Callable
+from types import ModuleType
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers.polling import PollingObserverVFS
 
-import importlib
-from pydoc import importfile
+from loguru import logger as log
 
+import importlib
+import imp
+from pydoc import importfile
 
 class Supervisor:
     def __init__(
-        self, path: str, regex: str = r"(\.py)$", recursive: bool = True
+        self, path: str, regex: str = r"(\.py)$", recursive: bool = True, start_function: Callable = None, stop_function: Callable = None
     ) -> None:
-        self._event_handler = FileChangeEvent(regex)
+        
+        # Function to run when the Supervisor has started
+        self._start_function = start_function
+        
+        # Function to call when the supervisor is stopping/restarting
+        self._stop_function = stop_function
+        
+        self._event_handler = FileChangeEvent(regex, self)
         self._observer = PollingObserverVFS(
             stat=os.stat, listdir=os.scandir, polling_interval=0.1
         )
@@ -32,38 +42,45 @@ class Supervisor:
         self._path = path
         self._observer.schedule(self._event_handler, self._path, recursive=recursive)
 
-        self.process: Optional[mp.Process] = None
+        # self.process: Optional[mp.Process] = None
 
     def stop(self):
-        if self.process:
-            print("Stopping runner")
-            print("Waiting for active tasks to conclude...")
-            self.process.join()
-            self.process = None
-            print("Runner stopped")
-
-    def start(self, target: Callable):
-        self.process = mp.Process(target=target)
-        print("Starting runner")
-        self.process.start()
+        if True:
+            log.info("Stopping runner")
+            log.info("Waiting for active tasks to conclude...")
+            
+            # Execute any specified stop callback.
+            self._stop_function()
+            
+            # Kill the process
+            # self.process.kill()
+            # self.process = None
+            log.info("Runner stopped")
+            
+    def start(self):
+        # self.process = mp.Process(target=self._start_function)
+        log.info("Starting runner")
+        # self.process.start()
+        self._start_function()
 
     def restart(self):
-        print("Restarting service...")
+        log.info("Restarting service...")
         self.stop()
         self.start()
     
     def listen(self):
-        print(f"Listening for changes in '{self._path}'")
+        log.success(f"Listening for changes in '{self._path}'")
         self._observer.start()
+        self.start()
 
 class FileChangeEvent(FileSystemEventHandler):
-    def __init__(self, regex: str) -> None:
+    def __init__(self, regex: str, supervisor: Supervisor) -> None:
         super().__init__()
 
         self.pattern = regex
+        self.supervisor = supervisor
 
     def on_any_event(self, event):
-
         # Under no circumstances do we want to reload a directory
         if event.is_directory:
             return
@@ -71,8 +88,17 @@ class FileChangeEvent(FileSystemEventHandler):
         path: str = event.src_path
 
         # This should counteract the directory check anyways, but check that our file path matches our regex
-        if re.match(pattern=self.pattern, string=path):
+        if re.search(pattern=self.pattern, string=path):
             module = importfile(path)
 
-            print(f"Detected changes in {module.__name__}")
-            importlib.reload(module)
+            log.warning(f"Detected changes in {module.__name__}")
+            # importlib.reload(module)
+            self.reloadModuleWithChildren(module)
+            
+            self.supervisor.restart()
+            
+    def reloadModuleWithChildren(self, mod):
+        mod = importlib.reload(mod)
+        for k, v in mod.__dict__.items():
+            if isinstance(v, ModuleType):
+                setattr(mod, k, importlib.import_module(v.__name__))

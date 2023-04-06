@@ -1,5 +1,5 @@
 from multiprocessing import Process
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 import sys
 import time
 
@@ -23,8 +23,10 @@ class Listener:
         self.queue_name = queue_name
         self.callback = callback
         self.connection_parameters = connection_parameters
-        self.workers = workers
+        self.workers_amount = workers
         self.decoder: Optional[Decoder] = decoder
+        
+        self.workers: List[Process] = []
 
     def _callback(self, channel, method, properties, body):
         log.info(f"Received new message on queue '{self.queue_name}'")
@@ -76,6 +78,14 @@ class Listener:
             log.error("Connection failed, retrying in 2s...")
             time.sleep(2)
             self._start_worker(index)
+            
+    def stop(self):
+        """
+        This function stops all workers by killing them.
+        """
+        for worker in self.workers:
+            log.warning("Killing worker")
+            worker.kill()
 
     def start(self):
         """
@@ -85,8 +95,9 @@ class Listener:
           workers (int): The amount of workers to start.
         """
         # If an amount of workers has been passed in, use that, else, use the maximum amount of CPUs.
-        workers = self.workers or self._get_max_workers()
+        workers = self.workers_amount or self._get_max_workers()
 
         for i in range(workers):
             p = Process(target=self._start_worker, args=(i,))
             p.start()
+            self.workers.append(p)

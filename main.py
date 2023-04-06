@@ -1,19 +1,19 @@
-from rabbie import Consumer, JSONDecoder
+from rabbie import consumer
 
 from loguru import logger as log
 
-consumer = Consumer(
-    host="queue_service",
-    port=5672,
-    username="user",
-    password="password",
-    default_decoder=JSONDecoder(),
-)
+# consumer = Consumer(
+#     host="queue_service",
+#     port=5672,
+#     username="user",
+#     password="password",
+#     default_decoder=JSONDecoder(),
+# )
 
 
 @consumer.listen(queue="test", workers=1)
 def example_callback():
-    log.info("hit this with no params")
+    log.debug("hit this with no params")
 
 
 @consumer.listen(queue="test2", workers=2)
