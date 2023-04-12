@@ -90,7 +90,7 @@ class FileChangeEvent(FileSystemEventHandler):
         # This should counteract the directory check anyways, but check that our file path matches our regex
         if re.search(pattern=self.pattern, string=path):
             module = importfile(path)
-
+            # TODO: Here will add listeners again, we don't want to do this.
             log.warning(f"Detected changes in {module.__name__}")
             # importlib.reload(module)
             self.reloadModuleWithChildren(module)
