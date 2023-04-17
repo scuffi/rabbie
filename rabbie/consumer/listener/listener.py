@@ -1,4 +1,7 @@
-from multiprocess import Process, SimpleQueue, Manager
+import os
+import sys
+import signal
+from multiprocess import Process, Manager
 
 from typing import Callable, Optional, List
 import time
@@ -27,8 +30,8 @@ class Listener:
         
         self.workers: List[Process] = []
         
-        # self.manager = Manager()
-        # self.channels = self.manager.list()
+        self.manager = None
+        self.event = None
 
     def _callback(self, channel, method, properties, body):
         log.info(f"Received new message on queue '{self.queue_name}'")
@@ -55,7 +58,7 @@ class Listener:
         p.start()
         p.join()
 
-    def _start_worker(self, index: int):
+    def _start_worker(self, stop_event, index: int):
         # To ensure that we only 
         # channel = None
         try:
@@ -69,10 +72,32 @@ class Listener:
             channel.basic_qos(prefetch_count=1)
 
             channel.basic_consume(
-                queue=self.queue_name, on_message_callback=self._callback
+                queue=self.queue_name, on_message_callback=self._callback, auto_ack=True
             )
             
-            channel.start_consuming()
+            # for method, properties, body in channel.consume(self.queue_name):
+            #         self._callback(channel, method, properties, body)
+            
+            # Create a signal handler to close the connection when we receive a SIGINT
+            def handle_sigterm(sig, frame):
+                log.warning(f"Received signal {sig}, closing connection...")
+                stop_event.set()
+                channel.close()
+                connection.close()
+                log.warning("Connection closed")
+                sys.exit(0)
+                
+            # Register the signal handler for SIGTERM
+            signal.signal(signal.SIGTERM, handle_sigterm)
+            
+            # channel.start_consuming()
+            
+            while not stop_event.is_set():
+                channel.connection.process_data_events()
+                
+            log.error("Closing connection...")
+            channel.close()
+            connection.close()
         except AMQPError as e:
             log.error("Connection failed, retrying in 2s...")
             time.sleep(2)
@@ -86,10 +111,16 @@ class Listener:
             
         log.info(f"Killing {len(self.workers)} workers...")
         # log.info(id(self.workers))
+        if self.event is not None:
+            self.event.set()
+            
         for worker in self.workers:
             log.warning("Killing worker")
             # Kill the thread
-            worker.kill()
+            # os.kill(worker.pid, signal.SIGTERM)
+            
+            # Wait for the process to finish
+            worker.join()
 
     def start(self):
         """
@@ -101,13 +132,13 @@ class Listener:
         
         # If an amount of workers has been passed in, use that, else, use the maximum amount of CPUs.
         workers = self.workers_amount or self._get_max_workers()
-
+        
+        self.manager = Manager()
+        self.event = self.manager.Event()
+        
         for i in range(workers):
-            p = Process(target=self._start_worker, args=(i,))
+            p = Process(target=self._start_worker, args=(self.event,i,))
             p.start()
             self.workers.append(p)
             
-        # log.info(id(self.workers))
         log.info(f"[green]Started listening to [bold cyan]{self.queue_name}[/bold cyan] with {workers} {'workers' if workers > 1 else 'worker'}")
-        # time.sleep(2)
-        # log.info(self.queue.empty())
