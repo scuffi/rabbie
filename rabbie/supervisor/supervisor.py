@@ -92,10 +92,15 @@ class FileChangeEvent(FileSystemEventHandler):
             module = importfile(path)
             # TODO: Here will add listeners again, we don't want to do this.
             log.warning(f"Detected changes in {module.__name__}")
-            # importlib.reload(module)
+            
+            # Stop the supervisor listeners
+            self.supervisor.stop()
+            
+            # Reload the module so it loads up when nothing is running.
             self.reloadModuleWithChildren(module)
             
-            self.supervisor.restart()
+            # Start the supervisor listeners again
+            self.supervisor.start()
             
     def reloadModuleWithChildren(self, mod):
         mod = importlib.reload(mod)

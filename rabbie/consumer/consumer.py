@@ -53,11 +53,10 @@ class Consumer:
             credentials=credentials,
         )
 
-        self.manager = Manager()
+        # self.manager = Manager()
         # self.listeners: ListProxy = self.manager.list()
             
         self.listeners: List[Listener] = []
-        self.running: List[Listener] = []
 
     def listen(
         self,
@@ -100,31 +99,9 @@ class Consumer:
         Args:
           halt (bool): bool = True. Should calling this function halt the main thread?
         """
-        # from watchdog.observers.polling import PollingObserverVFS
-        # from watchdog.events import FileSystemEventHandler
-
-
-        # class Event(FileSystemEventHandler):
-        #     def on_any_event(self, event):
-        #         print(f"Reloading {event.src_path}")
-
-        # event_handler = Event()
-        # # observer = Observer()
-        # observer = PollingObserverVFS(
-        #     stat=os.stat, listdir=os.scandir, polling_interval=0.1
-        # )
-
-        # observer.schedule(event_handler, "./", recursive=True)
-        # # observer.start()
-        
         log.success("Starting Service...")
 
         if reload:
-            # TODO: Pass the consumer in here, the consumer must be part of a Manager.
-            # TODO: This means that each process created, will refer to the same function, as this would create a new instance per process
-            
-            # TODO: This may mean that a Consumer must have ProcessListeners class, which is a manager that stores all of the listeners,
-            # TODO: this way it would allow for multiple places, including this main consumer, to refer to the same listener list.
             supervisor = Supervisor("./", start_function=self._start_listeners, stop_function=self._stop_listeners)
             
             supervisor.listen()
@@ -141,14 +118,13 @@ class Consumer:
             listener.start()
             
             self.listeners.remove(listener)
-            self.running.append(listener)
             
         
     def _stop_listeners(self):
-        for listener in self.running:
+        for listener in self.listeners:
             listener.stop()
             
-        self.running.clear()
+        self.listeners.clear()
 
     def _halt(self, halt: bool):
         while halt:
