@@ -1,11 +1,9 @@
-from multiprocessing import Process
+from multiprocess import Process
 from typing import Callable, Optional, List
-import sys
 import time
 
-from loguru import logger as log
-
 from ...decoder import Decoder
+from ...logger import logger as log
 
 import pika
 from pika.exceptions import AMQPError
@@ -54,7 +52,7 @@ class Listener:
         p.join()
 
     def _start_worker(self, index: int):
-        log.debug("Opening new connection")
+        # log.debug("Opening new connection")
         try:
             # Create a BlockingConnection into the queue
             connection = pika.BlockingConnection(self.connection_parameters)
@@ -67,10 +65,6 @@ class Listener:
 
             channel.basic_consume(
                 queue=self.queue_name, on_message_callback=self._callback
-            )
-
-            log.success(
-                f" [*] Waiting for messages from worker [{index + 1}]. To exit press CTRL+C"
             )
 
             channel.start_consuming()
@@ -101,3 +95,5 @@ class Listener:
             p = Process(target=self._start_worker, args=(i,))
             p.start()
             self.workers.append(p)
+            
+        log.info(f"[green]Started listening to [bold cyan]{self.queue_name}[/bold cyan] with {workers} {'workers' if workers > 1 else 'worker'}")

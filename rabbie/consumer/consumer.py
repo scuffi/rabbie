@@ -1,10 +1,6 @@
 from functools import wraps
 from typing import Optional, List, TYPE_CHECKING
 import time
-from multiprocessing import Manager
-from multiprocessing.managers import ListProxy
-
-from loguru import logger as log
 
 import pika
 
@@ -14,6 +10,7 @@ from .listener import Listener
 from ..supervisor import Supervisor
 
 from ..decoder import JSONDecoder
+from ..logger import logger as log
 
 if TYPE_CHECKING:
     from ..decoder import Decoder
@@ -78,10 +75,10 @@ class Consumer:
             # Add the configured listener to the list of listeners to be called later
             self.listeners.append(ls)
             
-            log.info("Registered new listener")
-            log.info(self.listeners)
-            log.info(function)
-            log.error(self)
+            # log.info("Registered new listener")
+            # log.info(self.listeners)
+            # log.info(function)
+            # log.error(self)
 
             @wraps(function)
             def listener(*args, **kwargs):
@@ -99,7 +96,7 @@ class Consumer:
         Args:
           halt (bool): bool = True. Should calling this function halt the main thread?
         """
-        log.success("Starting Service...")
+        log.info("Starting Service...")
 
         if reload:
             supervisor = Supervisor("./", start_function=self._start_listeners, stop_function=self._stop_listeners)
@@ -112,9 +109,7 @@ class Consumer:
         
     def _start_listeners(self):
         log.info(f"Starting {len(self.listeners)} listeners")
-        log.error(self)
         for listener in self.listeners.copy():
-            log.debug("Starting new listener")
             listener.start()
             
             self.listeners.remove(listener)
@@ -132,7 +127,7 @@ class Consumer:
 
 
 consumer = Consumer(
-    host="queue_service",
+    host="localhost",
     port=5672,
     username="user",
     password="password",

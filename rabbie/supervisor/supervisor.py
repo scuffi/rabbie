@@ -11,17 +11,15 @@
 # When the current process is finished, plainly start the process again like it did before
 import os
 import re
-import multiprocessing as mp
-from typing import Optional, Callable
+from typing import Callable
 from types import ModuleType
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers.polling import PollingObserverVFS
 
-from loguru import logger as log
-
 import importlib
-import imp
 from pydoc import importfile
+
+from ..logger import logger as log
 
 class Supervisor:
     def __init__(
@@ -69,7 +67,7 @@ class Supervisor:
         self.start()
     
     def listen(self):
-        log.success(f"Listening for changes in '{self._path}'")
+        log.info(f"Listening for changes in '{self._path}'")
         self._observer.start()
         self.start()
 
