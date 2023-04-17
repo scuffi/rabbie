@@ -110,13 +110,13 @@ class Consumer:
     def _start_listeners(self):
         log.info(f"Starting {len(self.listeners)} listeners")
         for listener in self.listeners.copy():
+            # log.info(f"Listener id: {id(listener)}")
             listener.start()
             
-            self.listeners.remove(listener)
-            
-        
     def _stop_listeners(self):
+        log.info(f"[red]Stopping {len(self.listeners)} listeners")
         for listener in self.listeners:
+            # log.info(f"Listener id: {id(listener)}")
             listener.stop()
             
         self.listeners.clear()

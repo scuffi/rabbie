@@ -61,10 +61,10 @@ class Supervisor:
         # self.process.start()
         self._start_function()
 
-    def restart(self):
-        log.info("Restarting service...")
-        self.stop()
-        self.start()
+    # def restart(self):
+    #     log.info("Restarting service...")
+    #     self.stop()
+    #     self.start()
     
     def listen(self):
         log.info(f"Listening for changes in '{self._path}'")
@@ -87,6 +87,9 @@ class FileChangeEvent(FileSystemEventHandler):
 
         # This should counteract the directory check anyways, but check that our file path matches our regex
         if re.search(pattern=self.pattern, string=path):
+            # Prestop -> stop existing listeners, before we reload & add more
+            # self.supervisor.stop()
+            
             module = importfile(path)
             # TODO: Here will add listeners again, we don't want to do this.
             log.warning(f"Detected changes in {module.__name__}")
