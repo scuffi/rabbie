@@ -74,11 +74,6 @@ class Consumer:
 
             # Add the configured listener to the list of listeners to be called later
             self.listeners.append(ls)
-            
-            # log.info("Registered new listener")
-            # log.info(self.listeners)
-            # log.info(function)
-            # log.error(self)
 
             @wraps(function)
             def listener(*args, **kwargs):
