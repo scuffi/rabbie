@@ -2,6 +2,7 @@ import os
 import sys
 import signal
 from multiprocess import Process, Manager
+import threading
 
 from typing import Callable, Optional, List
 import time
@@ -59,9 +60,8 @@ class Listener:
         p.join()
 
     def _start_worker(self, stop_event, index: int):
-        # To ensure that we only 
-        # channel = None
         try:
+            # TODO: Unpickle (dill) the callback function, so it becomes a callable, then pass that callable into on_message_callback?
             # Create a BlockingConnection into the queue
             connection = pika.BlockingConnection(self.connection_parameters)
 
@@ -90,10 +90,10 @@ class Listener:
             # Register the signal handler for SIGTERM
             signal.signal(signal.SIGTERM, handle_sigterm)
             
-            # channel.start_consuming()
+            channel.start_consuming()
             
-            while not stop_event.is_set():
-                channel.connection.process_data_events()
+            # while not stop_event.is_set():
+            #     channel.connection.process_data_events()
                 
             log.error("Closing connection...")
             channel.close()
@@ -117,7 +117,7 @@ class Listener:
         for worker in self.workers:
             log.warning("Killing worker")
             # Kill the thread
-            # os.kill(worker.pid, signal.SIGTERM)
+            os.kill(worker.pid, signal.SIGTERM)
             
             # Wait for the process to finish
             worker.join()

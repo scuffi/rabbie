@@ -64,6 +64,7 @@ class Consumer:
         def decorator(function):
             # If no credentials are passed in, use the consumer_config preconfigured variables
             # Instantiate a consumer object
+            # TODO: Wrap function in dill.dumps and then later on attempt to load the dill function when calling it, this may be too slow, but may fix the issue?
             ls = Listener(
                 callback=function,
                 queue_name=queue,
