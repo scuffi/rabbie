@@ -15,6 +15,7 @@ from ..logger import logger as log
 if TYPE_CHECKING:
     from ..decoder import Decoder
 
+
 class Consumer:
     """
     Listener holds all of the workers (processes) that will consume from the queue.
@@ -89,24 +90,30 @@ class Consumer:
         log.info("Starting Service...")
 
         if reload:
-            supervisor = Supervisor("./", start_function=self._start_listeners, stop_function=self._stop_listeners)
-            
+            supervisor = Supervisor(
+                "./",
+                start_function=self._start_listeners,
+                stop_function=self._stop_listeners,
+            )
+
             supervisor.listen()
         else:
             self._start_listeners()
 
         self._halt(halt)
-        
+
     def _start_listeners(self):
         log.info(f"Starting {len(self.listeners)} listeners")
         for listener in self.listeners.copy():
             listener.start()
-            
+
     def _stop_listeners(self):
-        log.info(f"[red]Stopping {len(self.listeners)} listeners ({sum([len(listener.workers) for listener in self.listeners])} workers)")
+        log.info(
+            f"[red]Stopping {len(self.listeners)} listeners ({sum([len(listener.workers) for listener in self.listeners])} workers)"
+        )
         for listener in self.listeners:
             listener.stop()
-            
+
         self.listeners.clear()
 
     def _halt(self, halt: bool):

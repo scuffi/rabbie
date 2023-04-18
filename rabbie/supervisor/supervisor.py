@@ -21,17 +21,22 @@ from pydoc import importfile
 
 from ..logger import logger as log
 
+
 class Supervisor:
     def __init__(
-        self, path: str, regex: str = r"(\.py)$", recursive: bool = True, start_function: Callable = None, stop_function: Callable = None
+        self,
+        path: str,
+        regex: str = r"(\.py)$",
+        recursive: bool = True,
+        start_function: Callable = None,
+        stop_function: Callable = None,
     ) -> None:
-        
         # Function to run when the Supervisor has started
         self._start_function = start_function
-        
+
         # Function to call when the supervisor is stopping/restarting
         self._stop_function = stop_function
-        
+
         self._event_handler = FileChangeEvent(regex, self)
         self._observer = PollingObserverVFS(
             stat=os.stat, listdir=os.scandir, polling_interval=0.1
@@ -43,12 +48,12 @@ class Supervisor:
     def stop(self):
         log.debug("Stopping runner")
         log.debug("Waiting for active tasks to conclude...")
-        
+
         # Execute any specified stop callback.
         self._stop_function()
-        
+
         log.debug("Runner stopped")
-            
+
     def start(self):
         log.debug("Starting runner")
         self._start_function()
@@ -57,6 +62,7 @@ class Supervisor:
         log.info(f"Listening for changes in '{self._path}'")
         self._observer.start()
         self.start()
+
 
 class FileChangeEvent(FileSystemEventHandler):
     def __init__(self, regex: str, supervisor: Supervisor) -> None:
@@ -76,18 +82,20 @@ class FileChangeEvent(FileSystemEventHandler):
         # This should counteract the directory check anyways, but check that our file path matches our regex
         if re.search(pattern=self.pattern, string=path):
             module = importfile(path)
-            log.warning(f"Detected changes in {module.__name__}, listeners will reload...")
-            
+            log.warning(
+                f"Detected changes in {module.__name__}, listeners will reload..."
+            )
+
             # Stop the supervisor listeners
             self.supervisor.stop()
-            
+
             # Reload the module so it loads up when nothing is running.
             self.reloadModuleWithChildren(module)
             log.debug("Reloaded module")
-            
+
             # Start the supervisor listeners again
             self.supervisor.start()
-            
+
     def reloadModuleWithChildren(self, mod):
         mod = importlib.reload(mod)
         for k, v in mod.__dict__.items():
