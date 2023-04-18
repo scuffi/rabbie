@@ -89,6 +89,10 @@ class FileChangeEvent(FileSystemEventHandler):
             # Stop the supervisor listeners
             self.supervisor.stop()
 
+            # * We could use limeade for this, only issue would be that it statically reloads everything,
+            # * this means the stored callbacks would be previous instances, to fix, if we iterated over all
+            # * the listeners we have, and somehow fetech their functions, it would work?
+
             # Reload the module so it loads up when nothing is running.
             self.reloadModuleWithChildren(module)
             log.debug("Reloaded module")
