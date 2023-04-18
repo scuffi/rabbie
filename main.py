@@ -8,7 +8,7 @@ def example_callback():
 
 
 @consumer.listen(queue="test2", workers=2)
-def example2(body):
+def example2(channel, body):
     log.debug(body)
 
 

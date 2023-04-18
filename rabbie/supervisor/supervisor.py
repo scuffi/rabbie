@@ -40,32 +40,19 @@ class Supervisor:
         self._path = path
         self._observer.schedule(self._event_handler, self._path, recursive=recursive)
 
-        # self.process: Optional[mp.Process] = None
-
     def stop(self):
-        if True:
-            log.info("Stopping runner")
-            log.info("Waiting for active tasks to conclude...")
-            
-            # Execute any specified stop callback.
-            self._stop_function()
-            
-            # Kill the process
-            # self.process.kill()
-            # self.process = None
-            log.info("Runner stopped")
+        log.info("Stopping runner")
+        log.info("Waiting for active tasks to conclude...")
+        
+        # Execute any specified stop callback.
+        self._stop_function()
+        
+        log.info("Runner stopped")
             
     def start(self):
-        # self.process = mp.Process(target=self._start_function)
         log.info("Starting runner")
-        # self.process.start()
         self._start_function()
 
-    # def restart(self):
-    #     log.info("Restarting service...")
-    #     self.stop()
-    #     self.start()
-    
     def listen(self):
         log.info(f"Listening for changes in '{self._path}'")
         self._observer.start()
@@ -87,12 +74,8 @@ class FileChangeEvent(FileSystemEventHandler):
 
         # This should counteract the directory check anyways, but check that our file path matches our regex
         if re.search(pattern=self.pattern, string=path):
-            # Prestop -> stop existing listeners, before we reload & add more
-            # self.supervisor.stop()
-            
             module = importfile(path)
-            # TODO: Here will add listeners again, we don't want to do this.
-            log.warning(f"Detected changes in {module.__name__}")
+            log.warning(f"Detected changes in {module.__name__}, listeners will reload...")
             
             # Stop the supervisor listeners
             self.supervisor.stop()

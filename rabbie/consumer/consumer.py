@@ -12,6 +12,8 @@ from ..supervisor import Supervisor
 from ..decoder import JSONDecoder
 from ..logger import logger as log
 
+import dill
+
 if TYPE_CHECKING:
     from ..decoder import Decoder
 
@@ -66,6 +68,7 @@ class Consumer:
             # Instantiate a consumer object
             # TODO: Wrap function in dill.dumps and then later on attempt to load the dill function when calling it, this may be too slow, but may fix the issue?
             ls = Listener(
+                # callback=dill.dumps(function),
                 callback=function,
                 queue_name=queue,
                 connection_parameters=self.connection_parameters,
@@ -106,20 +109,23 @@ class Consumer:
     def _start_listeners(self):
         log.info(f"Starting {len(self.listeners)} listeners")
         for listener in self.listeners.copy():
-            # log.info(f"Listener id: {id(listener)}")
             listener.start()
             
     def _stop_listeners(self):
-        log.info(f"[red]Stopping {len(self.listeners)} listeners")
+        log.info(f"[red]Stopping {len(self.listeners)} listeners ({sum([len(listener.workers) for listener in self.listeners])} workers)")
         for listener in self.listeners:
-            # log.info(f"Listener id: {id(listener)}")
             listener.stop()
             
         self.listeners.clear()
 
     def _halt(self, halt: bool):
-        while halt:
-            time.sleep(1)
+        try:
+            while halt:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            log.info("Exiting gracefully...")
+            self._stop_listeners()
+            exit()
 
 
 consumer = Consumer(
