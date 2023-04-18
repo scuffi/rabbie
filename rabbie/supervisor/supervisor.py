@@ -41,16 +41,16 @@ class Supervisor:
         self._observer.schedule(self._event_handler, self._path, recursive=recursive)
 
     def stop(self):
-        log.info("Stopping runner")
-        log.info("Waiting for active tasks to conclude...")
+        log.debug("Stopping runner")
+        log.debug("Waiting for active tasks to conclude...")
         
         # Execute any specified stop callback.
         self._stop_function()
         
-        log.info("Runner stopped")
+        log.debug("Runner stopped")
             
     def start(self):
-        log.info("Starting runner")
+        log.debug("Starting runner")
         self._start_function()
 
     def listen(self):
@@ -72,6 +72,7 @@ class FileChangeEvent(FileSystemEventHandler):
 
         path: str = event.src_path
 
+        log.debug(f"Detected change in {path}")
         # This should counteract the directory check anyways, but check that our file path matches our regex
         if re.search(pattern=self.pattern, string=path):
             module = importfile(path)
@@ -82,6 +83,7 @@ class FileChangeEvent(FileSystemEventHandler):
             
             # Reload the module so it loads up when nothing is running.
             self.reloadModuleWithChildren(module)
+            log.debug("Reloaded module")
             
             # Start the supervisor listeners again
             self.supervisor.start()

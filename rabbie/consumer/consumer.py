@@ -52,9 +52,6 @@ class Consumer:
             credentials=credentials,
         )
 
-        # self.manager = Manager()
-        # self.listeners: ListProxy = self.manager.list()
-            
         self.listeners: List[Listener] = []
 
     def listen(
@@ -64,11 +61,7 @@ class Consumer:
         decoder: Optional["Decoder"] = None,
     ):
         def decorator(function):
-            # If no credentials are passed in, use the consumer_config preconfigured variables
-            # Instantiate a consumer object
-            # TODO: Wrap function in dill.dumps and then later on attempt to load the dill function when calling it, this may be too slow, but may fix the issue?
             ls = Listener(
-                # callback=dill.dumps(function),
                 callback=function,
                 queue_name=queue,
                 connection_parameters=self.connection_parameters,
