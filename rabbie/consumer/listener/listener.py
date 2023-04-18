@@ -1,11 +1,12 @@
 import os
 import sys
 import signal
-from multiprocess import Process, Manager
+from multiprocess import Process
 
 from typing import Callable, Optional, List
 import time
 
+from ...broker_types import Channel, Method, BasicProperties
 from ...decoder import Decoder
 from ...logger import logger as log
 
@@ -30,11 +31,12 @@ class Listener:
         
         self.workers: List[Process] = []
 
-    def _callback(self, channel, method, properties, body):
+    def _callback(self, channel: Channel, method: Method, properties: BasicProperties, body):
         log.info(f"Received new message on queue '{self.queue_name}'")
-        # log.info(channel)
-        # log.info(method)
-        # log.info(properties)
+        log.info(f"Channel Type: {type(channel)}")
+        log.info(f"Method Type: {type(method)}")
+        log.info(f"Properties Type: {type(properties)}")
+        log.info(f"Body Type: {type(body)}")
         # Run the configured Job in a new Process, pass the arguments down
         if self.decoder:
             body = self.decoder.decode(body)

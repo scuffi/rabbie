@@ -12,8 +12,6 @@ from ..supervisor import Supervisor
 from ..decoder import JSONDecoder
 from ..logger import logger as log
 
-import dill
-
 if TYPE_CHECKING:
     from ..decoder import Decoder
 
@@ -29,8 +27,8 @@ class Consumer:
 
     def __init__(
         self,
-        # All parameters below must be passed in as KW args
         *,
+        # All parameters below must be passed in as KW args
         host: Optional[str] = ConsumerConfig.HOST,
         port: Optional[str] = ConsumerConfig.PORT,
         username: Optional[str] = ConsumerConfig.USERNAME,
