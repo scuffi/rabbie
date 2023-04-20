@@ -4,6 +4,7 @@ from loguru import logger as log
 
 import main_2
 
+
 @consumer.listen(queue="test", workers=1)
 def example_callback():
     log.debug("hit this with no params")
