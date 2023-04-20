@@ -31,11 +31,14 @@ class Listener:
     def _callback(
         self, channel: Channel, method: Method, properties: Properties, body: Any
     ):
-        log.info(f"Received new message on queue '{self.details.queue_name}'")
-        log.info(f"Channel Type: {type(channel)}")
-        log.info(f"Method Type: {type(method)}")
-        log.info(f"Properties Type: {type(properties)}")
-        log.info(f"Body Type: {type(body)}")
+        """
+        This function is called when a message is received on the queue.
+        """
+
+        log.info(
+            f"[{os.getpid()}] Received new message on queue '{self.details.queue_name}'"
+        )
+
         # Run the configured Job in a new Process, pass the arguments down
         if self.details.decoder:
             body = self.details.decoder.decode(body)
@@ -101,6 +104,8 @@ class Listener:
             signal.signal(signal.SIGTERM, handle_sigterm)
 
             channel.start_consuming()
+
+            # TODO: Change how this entire thing works, it's not very elegant.
         except AMQPError as e:
             log.error("Connection failed, retrying in 2s...")
             time.sleep(2)
@@ -111,7 +116,6 @@ class Listener:
         This function stops all workers by killing them.
         """
         for worker in self.workers:
-            # log.debug("Killing worker")
             # Kill the thread
             os.kill(worker.pid, signal.SIGTERM)
 
