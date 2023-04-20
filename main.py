@@ -6,8 +6,9 @@ import main_2
 
 
 @consumer.listen(queue="test", workers=1)
-def example_callback():
-    log.debug("hit this with no params")
+def example_callback(body: dict):
+    log.debug(body)
+    raise Exception("nooo")
 
 
 if __name__ == "__main__":

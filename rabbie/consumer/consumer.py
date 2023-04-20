@@ -76,7 +76,6 @@ class Consumer:
 
             @wraps(function)
             def listener(*args, **kwargs):
-                # TODO: Check to see if when we call with arguments we can filter them out here -> if so, filter out based on type
                 return function(*args, **kwargs)
 
             return listener

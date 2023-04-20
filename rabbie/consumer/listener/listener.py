@@ -2,12 +2,14 @@ import os
 import sys
 import signal
 from multiprocess import Process
+from inspect import signature
+import traceback
 
-from typing import Callable, Optional, List
+from typing import Callable, Optional, List, Any, get_origin
 import time
 
 from .listener_details import ListenerDetails
-from ...broker_types import Channel, Method, BasicProperties
+from ...broker_types import Channel, Method, Properties
 from ...logger import logger as log
 
 import pika
@@ -27,7 +29,7 @@ class Listener:
         self.workers: List[Process] = []
 
     def _callback(
-        self, channel: Channel, method: Method, properties: BasicProperties, body
+        self, channel: Channel, method: Method, properties: Properties, body: Any
     ):
         log.info(f"Received new message on queue '{self.details.queue_name}'")
         log.info(f"Channel Type: {type(channel)}")
@@ -38,19 +40,34 @@ class Listener:
         if self.details.decoder:
             body = self.details.decoder.decode(body)
 
-        # TODO: Change this to work off of types rather than variable names
-        callback_arguments = list(self.details.callback.__code__.co_varnames)
+        # Get the signature of the function
+        sig = signature(self.details.callback)
+
         all_arguments = {
-            "channel": channel,
-            "method": method,
-            "properties": properties,
-            "body": body,
+            Channel: channel,
+            Method: method,
+            Properties: properties,
         }
 
-        arguments = {k: v for k, v in all_arguments.items() if k in callback_arguments}
+        # Match variables to their types, and pass them in. Default to body
+        arguments = {
+            arg: all_arguments[sig.parameters[arg].annotation]
+            if sig.parameters[arg].annotation in all_arguments
+            else body
+            for arg in sig.parameters.keys()
+        }
 
-        # TODO: Wrap this so entire program doesn't fail if exception raised?
-        self.details.callback(**arguments)
+        # Run the callback function safely, so if it errors, the listener won't stop
+        self._run_safely(self.details.callback, **arguments)
+
+    def _run_safely(self, callback: Callable, *args, **kwargs):
+        """
+        This function runs a callback function safely, whilst still printing any tracebacks.
+        """
+        try:
+            callback(*args, **kwargs)
+        except Exception:
+            traceback.print_exc()
 
     def _start_worker(self, index: int):
         try:
