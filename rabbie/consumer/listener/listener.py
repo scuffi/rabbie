@@ -112,6 +112,8 @@ class Listener:
         # If an amount of workers has been passed in, use that, else, use the maximum amount of CPUs.
         workers = self.workers_amount or self._get_max_workers()
         
+        self.workers.clear()
+        
         for i in range(workers):
             p = Process(target=self._start_worker, args=(i,))
             p.start()

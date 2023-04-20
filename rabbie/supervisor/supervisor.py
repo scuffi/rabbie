@@ -21,6 +21,8 @@ from pydoc import importfile
 
 from ..logger import logger as log
 
+import sys
+
 class Supervisor:
     def __init__(
         self, path: str, regex: str = r"(\.py)$", recursive: bool = True, start_function: Callable = None, stop_function: Callable = None
@@ -75,21 +77,45 @@ class FileChangeEvent(FileSystemEventHandler):
         log.debug(f"Detected change in {path}")
         # This should counteract the directory check anyways, but check that our file path matches our regex
         if re.search(pattern=self.pattern, string=path):
-            module = importfile(path)
-            log.warning(f"Detected changes in {module.__name__}, listeners will reload...")
+            # module = importfile(path)
+            # log.warning(f"Detected changes in {module.__name__}, listeners will reload...")
             
             # Stop the supervisor listeners
             self.supervisor.stop()
             
+            log.critical("[bold red]STOPPED")
+            
             # Reload the module so it loads up when nothing is running.
-            self.reloadModuleWithChildren(module)
+            # self.reloadModuleWithChildren(module)
+            # Get a list of all imported modules
+            log.debug(sys.modules)
+            modules = [m for m in sys.modules.values() if m is not None]
+
+            # Reload all modules that were imported from __main__
+            for module in modules:
+                if hasattr(module, '__name__'):
+                    log.debug(f"Reloading {module.__name__}")
+                    importlib.reload(module)
+                    
             log.debug("Reloaded module")
+            
+            # TODO: First empty the listeners list (keep a copy for future)
+            
+            # TODO: First reload the changed module, this module could have updated logic outside of listeners
+            
+            # TODO: Then reload all of the known listener modules (ensure that no duplicate function from before was added)
+            
+            # TODO: Then start the code back up again with the new listeners
             
             # Start the supervisor listeners again
             self.supervisor.start()
             
     def reloadModuleWithChildren(self, mod):
+        # import inspect
+        log.debug(f"Reloading {mod.__name__}")
         mod = importlib.reload(mod)
-        for k, v in mod.__dict__.items():
-            if isinstance(v, ModuleType):
-                setattr(mod, k, importlib.import_module(v.__name__))
+        # for k, v in mod.__dict__.items():
+        #     # v = inspect.getmodule(v)
+        #     if isinstance(v, ModuleType):
+        #         reloaded_child = importlib.reload(v)
+        #         setattr(mod, k, importlib.import_module(v.__name__))
