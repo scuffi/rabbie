@@ -8,8 +8,6 @@ from .listener import Listener, ListenerDetails
 from .consumer_config import ConsumerConfig
 from ..decoder import Decoder
 
-from ..logger import logger as log
-
 
 class MicroConsumer:
     def __init__(
@@ -48,6 +46,19 @@ class MicroConsumer:
     def _build_listeners(
         self, connection_details: ConnectionParameters
     ) -> List[Listener]:
+        """
+        This function builds a list of listeners using the provided connection details and listener details.
+
+        Args:
+          connection_details (ConnectionParameters): The `connection_details` parameter is an instance of
+        the `ConnectionParameters` class, which contains details about the connection to be established,
+        such as the host, port, username, password, and virtual host.
+
+        Returns:
+          A list of Listener objects is being returned. The Listener objects are created using the
+        connection_details parameter and iterating over the _listener_details attribute of the object to get
+        the details for each listener.
+        """
         return [
             Listener(connection_parameters=connection_details, details=listener_details)
             for listener_details in self._listener_details
