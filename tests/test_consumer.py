@@ -6,31 +6,6 @@ from rabbie.consumer import Listener, ListenerDetails
 # pip install pytest-mock
 import pytest
 
-"""
-Code Analysis
-
-Main functionalities:
-The Consumer class is responsible for creating and managing listeners that consume messages from a queue. It allows for horizontal scaling by creating multiple processes to consume from the queue independently. The class also provides methods for adding additional consumers and starting the listeners.
-
-Methods:
-- __init__: initializes the Consumer object with connection parameters and a default decoder.
-- listen: a decorator that creates a new listener with the specified queue, number of workers, and decoder. The decorated function is set as the callback for the listener.
-- add_consumer: adds a new consumer to the list of listeners.
-- start: starts all the listeners and optionally halts the main thread.
-- _start_listeners: starts all the listeners.
-- _stop_listeners: stops all the listeners.
-- _halt: halts the main thread.
-
-Fields:
-- _host: the hostname of the queue.
-- _port: the port number of the queue.
-- _username: the username for connecting to the queue.
-- _password: the password for connecting to the queue.
-- default_decoder: the default decoder to use for decoding messages.
-- connection_parameters: the parameters for connecting to the queue.
-- listeners: a list of Listener objects that consume messages from the queue.
-"""
-
 
 class TestConsumer:
     # Tests that a Consumer object can be created with valid parameters.
