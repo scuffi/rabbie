@@ -1,11 +1,16 @@
-from multiprocessing import Process
-from typing import Callable, Optional
+import os
 import sys
+import signal
+from multiprocess import Process
+from inspect import signature
+import traceback
+
+from typing import Callable, List, Any
 import time
 
-from loguru import logger as log
-
-from ...decoder import Decoder
+from .listener_details import ListenerDetails
+from ...broker_types import Channel, Method, Properties
+from ...logger import logger as log
 
 import pika
 from pika.exceptions import AMQPError
@@ -14,44 +19,63 @@ from pika.exceptions import AMQPError
 class Listener:
     def __init__(
         self,
-        queue_name: str,
-        callback: Callable,
+        details: ListenerDetails,
         connection_parameters: pika.ConnectionParameters,
-        workers: int = None,
-        decoder: Decoder = None,
     ) -> None:
-        self.queue_name = queue_name
-        self.callback = callback
+        # ListenerDetails store all the configuration details for a listener
+        self.details = details
+
         self.connection_parameters = connection_parameters
-        self.workers = workers
-        self.decoder: Optional[Decoder] = decoder
+        self.workers: List[Process] = []
 
-    def _callback(self, channel, method, properties, body):
-        log.info(f"Received new message on queue '{self.queue_name}'")
-        # log.info(channel)
-        # log.info(method)
-        # log.info(properties)
+    def is_listening(self) -> bool:
+        return all([worker.is_alive() for worker in self.workers])
+
+    def _callback(
+        self, channel: Channel, method: Method, properties: Properties, body: Any
+    ):
+        """
+        This function is called when a message is received on the queue.
+        """
+
+        log.info(
+            f"[{os.getpid()}] Received new message on queue '{self.details.queue_name}'"
+        )
+
         # Run the configured Job in a new Process, pass the arguments down
-        if self.decoder:
-            body = self.decoder.decode(body)
+        if self.details.decoder:
+            body = self.details.decoder.decode(body)
 
-        # TODO: Change this to work off of types rather than variable names
-        callback_arguments = list(self.callback.__code__.co_varnames)
+        # Get the signature of the function
+        sig = signature(self.details.callback)
+
         all_arguments = {
-            "channel": channel,
-            "method": method,
-            "properties": properties,
-            "body": body,
+            Channel: channel,
+            Method: method,
+            Properties: properties,
         }
 
-        arguments = {k: v for k, v in all_arguments.items() if k in callback_arguments}
+        # Match variables to their types, and pass them in. Default to body
+        arguments = {
+            arg: all_arguments[sig.parameters[arg].annotation]
+            if sig.parameters[arg].annotation in all_arguments
+            else body
+            for arg in sig.parameters.keys()
+        }
 
-        p = Process(target=self.callback, kwargs=arguments)
-        p.start()
-        p.join()
+        # Run the callback function safely, so if it errors, the listener won't stop
+        self._run_safely(self.details.callback, **arguments)
+
+    def _run_safely(self, callback: Callable, *args, **kwargs):
+        """
+        This function runs a callback function safely, whilst still printing any tracebacks.
+        """
+        try:
+            callback(*args, **kwargs)
+        except Exception:
+            traceback.print_exc()
 
     def _start_worker(self, index: int):
-        log.debug("Opening new connection")
         try:
             # Create a BlockingConnection into the queue
             connection = pika.BlockingConnection(self.connection_parameters)
@@ -59,22 +83,47 @@ class Listener:
             # Open a channel to receive messages through
             channel = connection.channel()
 
-            channel.queue_declare(queue=self.queue_name, durable=True)
+            channel.queue_declare(queue=self.details.queue_name, durable=True)
             channel.basic_qos(prefetch_count=1)
 
             channel.basic_consume(
-                queue=self.queue_name, on_message_callback=self._callback
+                queue=self.details.queue_name,
+                on_message_callback=self._callback,
+                auto_ack=True,
             )
 
-            log.success(
-                f" [*] Waiting for messages from worker [{index + 1}]. To exit press CTRL+C"
-            )
+            # TODO: Use this instead for more control of what variables to pass?
+            # for method, properties, body in channel.consume(self.queue_name):
+            #         self._callback(channel, method, properties, body)
+
+            # Create a signal handler to close the connection when we receive a SIGINT
+            def handle_sigterm(sig, frame):
+                log.debug("Gracefully closing connection...")
+                channel.close()
+                connection.close()
+                sys.exit(0)
+
+            # Register the signal handler for SIGTERM
+            signal.signal(signal.SIGTERM, handle_sigterm)
 
             channel.start_consuming()
+
+            # TODO: Change how this entire thing works, it's not very elegant.
         except AMQPError as e:
             log.error("Connection failed, retrying in 2s...")
             time.sleep(2)
             self._start_worker(index)
+
+    def stop(self):
+        """
+        This function stops all workers by killing them.
+        """
+        for worker in self.workers:
+            # Kill the thread
+            os.kill(worker.pid, signal.SIGTERM)
+
+            # Wait for the process to finish
+            worker.join()
 
     def start(self):
         """
@@ -83,9 +132,17 @@ class Listener:
         Args:
           workers (int): The amount of workers to start.
         """
+
         # If an amount of workers has been passed in, use that, else, use the maximum amount of CPUs.
-        workers = self.workers or self._get_max_workers()
+        workers = self.details.workers or self._get_max_workers()
+
+        self.workers.clear()
 
         for i in range(workers):
             p = Process(target=self._start_worker, args=(i,))
             p.start()
+            self.workers.append(p)
+
+        log.info(
+            f"[green]Started listening to [bold cyan]{self.details.queue_name}[/bold cyan] with {workers} {'workers' if workers > 1 else 'worker'}"
+        )

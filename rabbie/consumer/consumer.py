@@ -1,14 +1,17 @@
 from functools import wraps
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List, Union, TYPE_CHECKING
 import time
-import os
-
-from loguru import logger as log
 
 import pika
 
+from .microconsumer import MicroConsumer
 from .consumer_config import ConsumerConfig
-from .listener import Listener
+from .listener import Listener, ListenerDetails
+
+from ..supervisor import Supervisor
+
+from ..decoder import JSONDecoder
+from ..logger import logger as log
 
 if TYPE_CHECKING:
     from ..decoder import Decoder
@@ -26,8 +29,8 @@ class Consumer:
 
     def __init__(
         self,
-        # All parameters below must be passed in as KW args
         *,
+        # All parameters below must be passed in as KW args
         host: Optional[str] = ConsumerConfig.HOST,
         port: Optional[str] = ConsumerConfig.PORT,
         username: Optional[str] = ConsumerConfig.USERNAME,
@@ -58,14 +61,14 @@ class Consumer:
         decoder: Optional["Decoder"] = None,
     ):
         def decorator(function):
-            # If no credentials are passed in, use the consumer_config preconfigured variables
-            # Instantiate a consumer object
             ls = Listener(
-                callback=function,
-                queue_name=queue,
                 connection_parameters=self.connection_parameters,
-                workers=workers,
-                decoder=decoder or self.default_decoder,
+                details=ListenerDetails(
+                    callback=function,
+                    queue_name=queue,
+                    workers=workers,
+                    decoder=decoder or self.default_decoder,
+                ),
             )
 
             # Add the configured listener to the list of listeners to be called later
@@ -79,6 +82,15 @@ class Consumer:
 
         return decorator
 
+    def add_consumer(self, consumer: Union["Consumer", MicroConsumer]):
+        if isinstance(consumer, MicroConsumer):
+            self.listeners.extend(consumer._build_listeners(self.connection_parameters))
+            return
+
+        if isinstance(consumer, Consumer):
+            self.listeners.extend(consumer.listeners)
+            return
+
     def start(self, reload: bool = False, halt: bool = True):
         """
         Start listening for messages across all the created listeners
@@ -86,39 +98,50 @@ class Consumer:
         Args:
           halt (bool): bool = True. Should calling this function halt the main thread?
         """
-        from watchdog.observers import Observer
-        from watchdog.observers.polling import PollingObserver, PollingObserverVFS
-        from watchdog.events import LoggingEventHandler, FileSystemEventHandler
-        import importlib
-
-        for listener in self.listeners:
-            log.debug("Starting new listener")
-            listener.start()
-
-        class Event(FileSystemEventHandler):
-            def on_any_event(self, event):
-                print(f"Reloading {event.src_path}")
-                module = importlib.import_module(event.src_path, package="./")
-                importlib.reload(module)
-                return print(event)
-
-        event_handler = Event()
-        # observer = Observer()
-        observer = PollingObserverVFS(
-            stat=os.stat, listdir=os.scandir, polling_interval=0.1
-        )
-
-        observer.schedule(event_handler, "./", recursive=True)
-        observer.start()
+        log.info("Starting Service...")
 
         if reload:
-            # Only import if we are using reload to ignore this package in production
-            import jurigged
+            supervisor = Supervisor(
+                "./",
+                start_function=self._start_listeners,
+                stop_function=self._stop_listeners,
+            )
 
-            log.info("Watching for changes'")
-            watcher = jurigged.watch("/", poll=0.1, autostart=False)
-            watcher.observer.schedule(Event(), "./", recursive=True)
-            # watcher.start()
+            supervisor.listen()
+        else:
+            self._start_listeners()
 
-        while halt:
-            time.sleep(1)
+        self._halt(halt)
+
+    def _start_listeners(self):
+        log.info(f"Starting {len(self.listeners)} listeners")
+        for listener in self.listeners:
+            listener.start()
+
+    def _stop_listeners(self):
+        log.info(
+            f"[red]Stopping {len(self.listeners)} listeners ({sum([len(listener.workers) for listener in self.listeners])} workers)"
+        )
+        for listener in self.listeners:
+            listener.stop()
+
+        # ? We don't want to clear this list, or else when we reload some files don't get reloaded and will get cleared here
+        # self.listeners.clear()
+
+    def _halt(self, halt: bool):
+        try:
+            while halt:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            log.info("Exiting gracefully...")
+            self._stop_listeners()
+            exit()
+
+
+consumer = Consumer(
+    host="localhost",
+    port=5672,
+    username="user",
+    password="password",
+    default_decoder=JSONDecoder(),
+)
