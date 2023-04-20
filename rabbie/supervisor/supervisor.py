@@ -23,6 +23,7 @@ from ..logger import logger as log
 
 import sys
 
+
 class Supervisor:
     def __init__(
         self,
@@ -84,12 +85,12 @@ class FileChangeEvent(FileSystemEventHandler):
         if re.search(pattern=self.pattern, string=path):
             # module = importfile(path)
             # log.warning(f"Detected changes in {module.__name__}, listeners will reload...")
-            
+
             # Stop the supervisor listeners
             self.supervisor.stop()
-            
+
             log.critical("[bold red]STOPPED")
-            
+
             # Reload the module so it loads up when nothing is running.
             # self.reloadModuleWithChildren(module)
             # Get a list of all imported modules
@@ -98,20 +99,20 @@ class FileChangeEvent(FileSystemEventHandler):
 
             # Reload all modules that were imported from __main__
             for module in modules:
-                if hasattr(module, '__name__'):
+                if hasattr(module, "__name__"):
                     log.debug(f"Reloading {module.__name__}")
                     importlib.reload(module)
-                    
+
             log.debug("Reloaded module")
-            
+
             # TODO: First empty the listeners list (keep a copy for future)
-            
+
             # TODO: First reload the changed module, this module could have updated logic outside of listeners
-            
+
             # TODO: Then reload all of the known listener modules (ensure that no duplicate function from before was added)
-            
+
             # TODO: Then start the code back up again with the new listeners
-            
+
             # Start the supervisor listeners again
             self.supervisor.start()
 

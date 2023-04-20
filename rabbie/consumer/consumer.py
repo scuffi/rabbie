@@ -6,7 +6,7 @@ import pika
 
 from .microconsumer import MicroConsumer
 from .consumer_config import ConsumerConfig
-from .listener import Listener
+from .listener import Listener, ListenerDetails
 
 from ..supervisor import Supervisor
 
@@ -61,17 +61,14 @@ class Consumer:
         decoder: Optional["Decoder"] = None,
     ):
         def decorator(function):
-            log.warning(f"Registering {function.__name__} - {id(function)}")
-            # log.debug(f"{function.__module__}{function.__class__}{function.__name__}")
-            # TODO: Check if the function is already a listener, if so, we don't want to add a new one, we want to override the existing one
-            # How do we do that if the function hashes aren't the same?
-            
             ls = Listener(
-                callback=function,
-                queue_name=queue,
                 connection_parameters=self.connection_parameters,
-                workers=workers,
-                decoder=decoder or self.default_decoder,
+                details=ListenerDetails(
+                    callback=function,
+                    queue_name=queue,
+                    workers=workers,
+                    decoder=decoder or self.default_decoder,
+                ),
             )
 
             # Add the configured listener to the list of listeners to be called later
@@ -85,12 +82,12 @@ class Consumer:
             return listener
 
         return decorator
-    
+
     def add_consumer(self, consumer: Union["Consumer", MicroConsumer]):
         if isinstance(consumer, MicroConsumer):
             self.listeners.extend(consumer._build_listeners(self.connection_parameters))
             return
-        
+
         if isinstance(consumer, Consumer):
             self.listeners.extend(consumer.listeners)
             return
@@ -129,9 +126,9 @@ class Consumer:
         for listener in self.listeners:
             listener.stop()
 
-        # TODO: We don't want to clear this list, or else when we reload some files don't get reloaded and will get cleared here
+        # ? We don't want to clear this list, or else when we reload some files don't get reloaded and will get cleared here
         # self.listeners.clear()
-        
+
     def _halt(self, halt: bool):
         try:
             while halt:

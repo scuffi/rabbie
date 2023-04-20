@@ -10,12 +10,16 @@ from ..decoder import Decoder
 
 from ..logger import logger as log
 
+
 class MicroConsumer:
-    def __init__(self, default_decoder: Optional["Decoder"] = None,) -> None:
+    def __init__(
+        self,
+        default_decoder: Optional["Decoder"] = None,
+    ) -> None:
         self.default_decoder = default_decoder
-        
+
         self._listener_details: List[ListenerDetails] = []
-        
+
     def listen(
         self,
         queue: str = ConsumerConfig.QUEUE_NAME,
@@ -41,6 +45,11 @@ class MicroConsumer:
             return listener
 
         return decorator
-    
-    def _build_listeners(self, connection_details: ConnectionParameters) -> List[Listener]:
-        return [Listener(connection_parameters=connection_details, **listener_details.map()) for listener_details in self._listener_details]
+
+    def _build_listeners(
+        self, connection_details: ConnectionParameters
+    ) -> List[Listener]:
+        return [
+            Listener(connection_parameters=connection_details, details=listener_details)
+            for listener_details in self._listener_details
+        ]
