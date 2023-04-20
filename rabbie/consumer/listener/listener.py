@@ -5,7 +5,7 @@ from multiprocess import Process
 from inspect import signature
 import traceback
 
-from typing import Callable, Optional, List, Any, get_origin
+from typing import Callable, List, Any
 import time
 
 from .listener_details import ListenerDetails
@@ -27,6 +27,9 @@ class Listener:
 
         self.connection_parameters = connection_parameters
         self.workers: List[Process] = []
+
+    def is_listening(self) -> bool:
+        return all([worker.is_alive() for worker in self.workers])
 
     def _callback(
         self, channel: Channel, method: Method, properties: Properties, body: Any
