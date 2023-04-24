@@ -100,6 +100,9 @@ class Consumer:
         """
         log.info("Starting Service...")
 
+        # Temporarily disabling reloading
+        reload = False
+
         if reload:
             supervisor = Supervisor(
                 "./",
