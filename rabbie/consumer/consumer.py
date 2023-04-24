@@ -108,6 +108,12 @@ class Consumer:
         return decorator
 
     def add_consumer(self, consumer: Union["Consumer", MicroConsumer]):
+        """Merge a consumer into this consumer, adds all registered listeners
+        to this consumer
+
+        Args:
+            consumer (Union[Consumer, MicroConsumer]): The Consumer/MicoConsumer to merge
+        """
         if isinstance(consumer, MicroConsumer):
             self.listeners.extend(consumer._build_listeners(self.connection_parameters))
             return
