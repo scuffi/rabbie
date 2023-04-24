@@ -37,6 +37,6 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v2
         with:
-          username: __token__
+          username: __username__
           password: ${{ secrets.PYPI_API_TOKEN }}
           distributions: sdist bdist_wheel
