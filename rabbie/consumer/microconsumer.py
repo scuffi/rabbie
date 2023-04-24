@@ -23,6 +23,7 @@ class MicroConsumer:
         queue: str = ConsumerConfig.QUEUE_NAME,
         workers: int = 1,
         decoder: Optional["Decoder"] = None,
+        restart: bool = True,
     ):
         def decorator(function):
             ls = ListenerDetails(
@@ -30,6 +31,7 @@ class MicroConsumer:
                 queue_name=queue,
                 workers=workers,
                 decoder=decoder or self.default_decoder,
+                restart=restart,
             )
 
             # Add the listener details to ListenerDetails list

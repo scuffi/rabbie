@@ -59,6 +59,7 @@ class Consumer:
         queue: str = ConsumerConfig.QUEUE_NAME,
         workers: int = 1,
         decoder: Optional["Decoder"] = None,
+        restart: bool = True,
     ):
         def decorator(function):
             ls = Listener(
@@ -68,6 +69,7 @@ class Consumer:
                     queue_name=queue,
                     workers=workers,
                     decoder=decoder or self.default_decoder,
+                    restart=restart,
                 ),
             )
 

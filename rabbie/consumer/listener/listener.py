@@ -76,6 +76,7 @@ class Listener:
             traceback.print_exc()
 
     def _start_worker(self, index: int):
+        # TODO: Change this function, it's ugly
         try:
             # Create a BlockingConnection into the queue
             connection = pika.BlockingConnection(self.connection_parameters)
@@ -108,11 +109,11 @@ class Listener:
 
             channel.start_consuming()
 
-            # TODO: Change how this entire thing works, it's not very elegant.
-        except AMQPError as e:
-            log.error("Connection failed, retrying in 2s...")
-            time.sleep(2)
-            self._start_worker(index)
+        except AMQPError:
+            if self.details.restart:
+                log.error("Connection failed, retrying in 2s...")
+                time.sleep(2)
+                self._start_worker(index)
 
     def stop(self):
         """
