@@ -13,6 +13,7 @@ setup(
     author_email="iamarchieferguson@gmail.com",
     url="https://github.com/scuffi/rabbie",
     description="A simple, decorator interface for AMQP based message brokers",
+    long_description_content_type="text/markdown",
     long_description=long_description,
     license="MIT license",
     packages=find_packages(exclude=["test"]),
