@@ -2,7 +2,9 @@
 # <p align="center">🥕 Rabbie 🥕</p>
 
 
-![Image](https://img.shields.io/github/last-commit/scuffi/rabbie)![Image](https://img.shields.io/github/license/scuffi/rabbie)![Image](https://img.shields.io/pypi/pyversions/rabbie)
+<p align="center">
+<img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/scuffi/rabbie"> <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/rabbie"> <img alt="GitHub" src="https://img.shields.io/github/license/scuffi/rabbie"> <a href="https://pypi.org/project/rabbie/"><img alt="PyPI" src="https://img.shields.io/pypi/v/rabbie"></a>
+</p>
 
 
 Rabbie is a Python package designed to provide a simple and helpful interface for interacting with AMQP message brokers, with a particular focus on RabbitMQ. This package is perfect for developers who want to build robust, scalable, and fault-tolerant messaging systems in Python without the need for extensive knowledge of AMQP protocol.
