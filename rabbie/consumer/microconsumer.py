@@ -14,6 +14,11 @@ class MicroConsumer:
         self,
         default_decoder: Optional["Decoder"] = None,
     ) -> None:
+        """MicroConsumer object holds listeners for a Consumer to pick up
+
+        Args:
+            default_decoder (Optional[Decoder], optional): The default decoder for decoding messages. Defaults to None.
+        """
         self.default_decoder = default_decoder
 
         self._listener_details: List[ListenerDetails] = []
@@ -25,6 +30,15 @@ class MicroConsumer:
         decoder: Optional["Decoder"] = None,
         restart: bool = True,
     ):
+        """Listen for messages on a specific queue
+
+        Args:
+            queue (str, optional): The queue to listen to. Defaults to ConsumerConfig.QUEUE_NAME.
+            workers (int, optional): The amount of workers to listen simultaneously. Defaults to 1.
+            decoder (Optional[Decoder], optional): The decoder for this specific listener. Defaults to None.
+            restart (bool, optional): Should we attempt to restart this listener if connection fails?. Defaults to True.
+        """
+
         def decorator(function):
             ls = ListenerDetails(
                 callback=function,

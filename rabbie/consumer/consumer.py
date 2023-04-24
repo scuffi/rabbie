@@ -36,7 +36,19 @@ class Consumer:
         username: Optional[str] = ConsumerConfig.USERNAME,
         password: Optional[str] = ConsumerConfig.PASSWORD,
         default_decoder: Optional["Decoder"] = None,
+        **kwargs,
     ):
+        """Instantiate a new Consumer object with the given connection details.
+
+        Args:
+            host (Optional[str], optional): The host of the broker. Defaults to ConsumerConfig.HOST.
+            port (Optional[str], optional): The port of the broker. Defaults to ConsumerConfig.PORT.
+            username (Optional[str], optional): The authenticated username. Defaults to ConsumerConfig.USERNAME.
+            password (Optional[str], optional): The authenticated password. Defaults to ConsumerConfig.PASSWORD.
+            default_decoder (Optional[Decoder], optional): The default decoder for decoding messages. Defaults to None.
+
+            Any other arguments are passed directly in to the connection parameters.
+        """
         self._host = host
         self._port = port
         self._username = username
@@ -45,11 +57,13 @@ class Consumer:
         self.default_decoder = default_decoder
 
         credentials = pika.PlainCredentials(self._username, self._password)
+
         # Create the parameters for connection to the Queue
         self.connection_parameters = pika.ConnectionParameters(
             port=self._port,
             host=self._host,
             credentials=credentials,
+            **kwargs,
         )
 
         self.listeners: List[Listener] = []
@@ -61,6 +75,15 @@ class Consumer:
         decoder: Optional["Decoder"] = None,
         restart: bool = True,
     ):
+        """Listen for messages on a specific queue
+
+        Args:
+            queue (str, optional): The queue to listen to. Defaults to ConsumerConfig.QUEUE_NAME.
+            workers (int, optional): The amount of workers to listen simultaneously. Defaults to 1.
+            decoder (Optional[Decoder], optional): The decoder for this specific listener. Defaults to None.
+            restart (bool, optional): Should we attempt to restart this listener if connection fails?. Defaults to True.
+        """
+
         def decorator(function):
             ls = Listener(
                 connection_parameters=self.connection_parameters,

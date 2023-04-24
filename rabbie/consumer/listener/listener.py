@@ -50,6 +50,7 @@ class Listener:
         sig = signature(self.details.callback)
 
         all_arguments = {
+            # TODO: Wrap this channel in a custom channel, that provides utility functionality over acks, nacks, publishing, etc
             Channel: channel,
             Method: method,
             Properties: properties,
