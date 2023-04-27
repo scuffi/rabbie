@@ -1,1 +1,1 @@
-from .details import Details
+from .details import Details  # noqa: F401

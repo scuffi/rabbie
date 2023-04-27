@@ -4,9 +4,11 @@ import pika
 
 
 from ..connection import Details
+from ..encoder import Encoder
+from .publisher import Publisher
 
 
-class Publisher:
+class Producer:
     def __init__(
         self,
         *,
@@ -15,7 +17,8 @@ class Publisher:
         port: Optional[str] = Details.PORT,
         username: Optional[str] = Details.USERNAME,
         password: Optional[str] = Details.PASSWORD,
-        encoder=None,
+        encoder: Optional[Encoder] = None,
+        connection_type: pika.BaseConnection = pika.BlockingConnection,
         **kwargs,
     ):
         self._host = host
@@ -33,4 +36,14 @@ class Publisher:
             host=self._host,
             credentials=credentials,
             **kwargs,
+        )
+
+        self.connection = connection_type(self.connection_parameters)
+
+    def connect(self, queue: str = None, exchange: str = None, encoder: Encoder = None):
+        return Publisher(
+            connection=self.connection,
+            default_queue=queue,
+            default_exchange=exchange,
+            default_encoder=encoder,
         )
