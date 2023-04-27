@@ -5,7 +5,7 @@ import time
 import pika
 
 from .microconsumer import MicroConsumer
-from .consumer_config import ConsumerConfig
+from ..connection import Details
 from .listener import Listener, ListenerDetails
 
 from ..supervisor import Supervisor
@@ -31,12 +31,24 @@ class Consumer:
         self,
         *,
         # All parameters below must be passed in as KW args
-        host: Optional[str] = ConsumerConfig.HOST,
-        port: Optional[str] = ConsumerConfig.PORT,
-        username: Optional[str] = ConsumerConfig.USERNAME,
-        password: Optional[str] = ConsumerConfig.PASSWORD,
+        host: Optional[str] = Details.HOST,
+        port: Optional[str] = Details.PORT,
+        username: Optional[str] = Details.USERNAME,
+        password: Optional[str] = Details.PASSWORD,
         default_decoder: Optional["Decoder"] = None,
+        **kwargs,
     ):
+        """Instantiate a new Consumer object with the given connection details.
+
+        Args:
+            host (Optional[str], optional): The host of the broker. Defaults to Details.HOST.
+            port (Optional[str], optional): The port of the broker. Defaults to Details.PORT.
+            username (Optional[str], optional): The authenticated username. Defaults to Details.USERNAME.
+            password (Optional[str], optional): The authenticated password. Defaults to Details.PASSWORD.
+            default_decoder (Optional[Decoder], optional): The default decoder for decoding messages. Defaults to None.
+
+            Any other arguments are passed directly in to the connection parameters.
+        """
         self._host = host
         self._port = port
         self._username = username
@@ -45,21 +57,34 @@ class Consumer:
         self.default_decoder = default_decoder
 
         credentials = pika.PlainCredentials(self._username, self._password)
+
         # Create the parameters for connection to the Queue
         self.connection_parameters = pika.ConnectionParameters(
             port=self._port,
             host=self._host,
             credentials=credentials,
+            **kwargs,
         )
 
         self.listeners: List[Listener] = []
 
     def listen(
         self,
-        queue: str = ConsumerConfig.QUEUE_NAME,
+        queue: str = Details.QUEUE_NAME,
         workers: int = 1,
         decoder: Optional["Decoder"] = None,
+        restart: bool = True,
+        auto_acknowledge: bool = True,
     ):
+        """Listen for messages on a specific queue
+
+        Args:
+            queue (str, optional): The queue to listen to. Defaults to Details.QUEUE_NAME.
+            workers (int, optional): The amount of workers to listen simultaneously. Defaults to 1.
+            decoder (Optional[Decoder], optional): The decoder for this specific listener. Defaults to None.
+            restart (bool, optional): Should we attempt to restart this listener if connection fails?. Defaults to True.
+        """
+
         def decorator(function):
             ls = Listener(
                 connection_parameters=self.connection_parameters,
@@ -68,6 +93,8 @@ class Consumer:
                     queue_name=queue,
                     workers=workers,
                     decoder=decoder or self.default_decoder,
+                    restart=restart,
+                    auto_ack=auto_acknowledge,
                 ),
             )
 
@@ -83,6 +110,12 @@ class Consumer:
         return decorator
 
     def add_consumer(self, consumer: Union["Consumer", MicroConsumer]):
+        """Merge a consumer into this consumer, adds all registered listeners
+        to this consumer
+
+        Args:
+            consumer (Union[Consumer, MicroConsumer]): The Consumer/MicoConsumer to merge
+        """
         if isinstance(consumer, MicroConsumer):
             self.listeners.extend(consumer._build_listeners(self.connection_parameters))
             return

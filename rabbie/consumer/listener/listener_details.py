@@ -15,3 +15,5 @@ class ListenerDetails:
     queue_name: str
     workers: int
     decoder: Optional[Decoder]
+    restart: bool
+    auto_ack: bool

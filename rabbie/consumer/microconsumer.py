@@ -5,7 +5,7 @@ from functools import wraps
 from pika.connection import ConnectionParameters
 
 from .listener import Listener, ListenerDetails
-from .consumer_config import ConsumerConfig
+from ..connection import Details
 from ..decoder import Decoder
 
 
@@ -14,22 +14,40 @@ class MicroConsumer:
         self,
         default_decoder: Optional["Decoder"] = None,
     ) -> None:
+        """MicroConsumer object holds listeners for a Consumer to pick up
+
+        Args:
+            default_decoder (Optional[Decoder], optional): The default decoder for decoding messages. Defaults to None.
+        """
         self.default_decoder = default_decoder
 
         self._listener_details: List[ListenerDetails] = []
 
     def listen(
         self,
-        queue: str = ConsumerConfig.QUEUE_NAME,
+        queue: str = Details.QUEUE_NAME,
         workers: int = 1,
         decoder: Optional["Decoder"] = None,
+        restart: bool = True,
+        auto_acknowledge: bool = True,
     ):
+        """Listen for messages on a specific queue
+
+        Args:
+            queue (str, optional): The queue to listen to. Defaults to Details.QUEUE_NAME.
+            workers (int, optional): The amount of workers to listen simultaneously. Defaults to 1.
+            decoder (Optional[Decoder], optional): The decoder for this specific listener. Defaults to None.
+            restart (bool, optional): Should we attempt to restart this listener if connection fails?. Defaults to True.
+        """
+
         def decorator(function):
             ls = ListenerDetails(
                 callback=function,
                 queue_name=queue,
                 workers=workers,
                 decoder=decoder or self.default_decoder,
+                restart=restart,
+                auto_ack=auto_acknowledge,
             )
 
             # Add the listener details to ListenerDetails list

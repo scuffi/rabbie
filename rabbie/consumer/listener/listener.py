@@ -14,6 +14,7 @@ from ...logger import logger as log
 
 import pika
 from pika.exceptions import AMQPError
+from pika.adapters.blocking_connection import BlockingChannel
 
 
 class Listener:
@@ -32,7 +33,11 @@ class Listener:
         return all([worker.is_alive() for worker in self.workers])
 
     def _callback(
-        self, channel: Channel, method: Method, properties: Properties, body: Any
+        self,
+        channel: BlockingChannel,
+        method: Method,
+        properties: Properties,
+        body: Any,
     ):
         """
         This function is called when a message is received on the queue.
@@ -50,7 +55,8 @@ class Listener:
         sig = signature(self.details.callback)
 
         all_arguments = {
-            Channel: channel,
+            # TODO: Wrap this channel in a custom channel, that provides utility functionality over acks, nacks, publishing, etc
+            Channel: Channel(channel),
             Method: method,
             Properties: properties,
         }
@@ -76,6 +82,7 @@ class Listener:
             traceback.print_exc()
 
     def _start_worker(self, index: int):
+        # TODO: Change this function, it's ugly
         try:
             # Create a BlockingConnection into the queue
             connection = pika.BlockingConnection(self.connection_parameters)
@@ -89,7 +96,7 @@ class Listener:
             channel.basic_consume(
                 queue=self.details.queue_name,
                 on_message_callback=self._callback,
-                auto_ack=True,
+                auto_ack=self.details.auto_ack,
             )
 
             # TODO: Use this instead for more control of what variables to pass?
@@ -108,11 +115,11 @@ class Listener:
 
             channel.start_consuming()
 
-            # TODO: Change how this entire thing works, it's not very elegant.
-        except AMQPError as e:
-            log.error("Connection failed, retrying in 2s...")
-            time.sleep(2)
-            self._start_worker(index)
+        except AMQPError:
+            if self.details.restart:
+                log.error("Connection failed, retrying in 2s...")
+                time.sleep(2)
+                self._start_worker(index)
 
     def stop(self):
         """

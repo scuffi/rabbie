@@ -1,1 +1,2 @@
-from .types import *
+from .relayed_types import *
+from .channel import Channel
