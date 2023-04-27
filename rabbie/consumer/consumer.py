@@ -5,7 +5,7 @@ import time
 import pika
 
 from .microconsumer import MicroConsumer
-from .consumer_config import ConsumerConfig
+from ..connection import Details
 from .listener import Listener, ListenerDetails
 
 from ..supervisor import Supervisor
@@ -31,20 +31,20 @@ class Consumer:
         self,
         *,
         # All parameters below must be passed in as KW args
-        host: Optional[str] = ConsumerConfig.HOST,
-        port: Optional[str] = ConsumerConfig.PORT,
-        username: Optional[str] = ConsumerConfig.USERNAME,
-        password: Optional[str] = ConsumerConfig.PASSWORD,
+        host: Optional[str] = Details.HOST,
+        port: Optional[str] = Details.PORT,
+        username: Optional[str] = Details.USERNAME,
+        password: Optional[str] = Details.PASSWORD,
         default_decoder: Optional["Decoder"] = None,
         **kwargs,
     ):
         """Instantiate a new Consumer object with the given connection details.
 
         Args:
-            host (Optional[str], optional): The host of the broker. Defaults to ConsumerConfig.HOST.
-            port (Optional[str], optional): The port of the broker. Defaults to ConsumerConfig.PORT.
-            username (Optional[str], optional): The authenticated username. Defaults to ConsumerConfig.USERNAME.
-            password (Optional[str], optional): The authenticated password. Defaults to ConsumerConfig.PASSWORD.
+            host (Optional[str], optional): The host of the broker. Defaults to Details.HOST.
+            port (Optional[str], optional): The port of the broker. Defaults to Details.PORT.
+            username (Optional[str], optional): The authenticated username. Defaults to Details.USERNAME.
+            password (Optional[str], optional): The authenticated password. Defaults to Details.PASSWORD.
             default_decoder (Optional[Decoder], optional): The default decoder for decoding messages. Defaults to None.
 
             Any other arguments are passed directly in to the connection parameters.
@@ -70,7 +70,7 @@ class Consumer:
 
     def listen(
         self,
-        queue: str = ConsumerConfig.QUEUE_NAME,
+        queue: str = Details.QUEUE_NAME,
         workers: int = 1,
         decoder: Optional["Decoder"] = None,
         restart: bool = True,
@@ -78,7 +78,7 @@ class Consumer:
         """Listen for messages on a specific queue
 
         Args:
-            queue (str, optional): The queue to listen to. Defaults to ConsumerConfig.QUEUE_NAME.
+            queue (str, optional): The queue to listen to. Defaults to Details.QUEUE_NAME.
             workers (int, optional): The amount of workers to listen simultaneously. Defaults to 1.
             decoder (Optional[Decoder], optional): The decoder for this specific listener. Defaults to None.
             restart (bool, optional): Should we attempt to restart this listener if connection fails?. Defaults to True.

@@ -5,7 +5,7 @@ from functools import wraps
 from pika.connection import ConnectionParameters
 
 from .listener import Listener, ListenerDetails
-from .consumer_config import ConsumerConfig
+from ..connection import Details
 from ..decoder import Decoder
 
 
@@ -25,7 +25,7 @@ class MicroConsumer:
 
     def listen(
         self,
-        queue: str = ConsumerConfig.QUEUE_NAME,
+        queue: str = Details.QUEUE_NAME,
         workers: int = 1,
         decoder: Optional["Decoder"] = None,
         restart: bool = True,
@@ -33,7 +33,7 @@ class MicroConsumer:
         """Listen for messages on a specific queue
 
         Args:
-            queue (str, optional): The queue to listen to. Defaults to ConsumerConfig.QUEUE_NAME.
+            queue (str, optional): The queue to listen to. Defaults to Details.QUEUE_NAME.
             workers (int, optional): The amount of workers to listen simultaneously. Defaults to 1.
             decoder (Optional[Decoder], optional): The decoder for this specific listener. Defaults to None.
             restart (bool, optional): Should we attempt to restart this listener if connection fails?. Defaults to True.
