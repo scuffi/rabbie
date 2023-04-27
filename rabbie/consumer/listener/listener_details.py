@@ -16,3 +16,4 @@ class ListenerDetails:
     workers: int
     decoder: Optional[Decoder]
     restart: bool
+    auto_ack: bool

@@ -74,6 +74,7 @@ class Consumer:
         workers: int = 1,
         decoder: Optional["Decoder"] = None,
         restart: bool = True,
+        auto_acknowledge: bool = True,
     ):
         """Listen for messages on a specific queue
 
@@ -93,6 +94,7 @@ class Consumer:
                     workers=workers,
                     decoder=decoder or self.default_decoder,
                     restart=restart,
+                    auto_ack=auto_acknowledge,
                 ),
             )
 

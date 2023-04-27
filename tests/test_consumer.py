@@ -80,13 +80,23 @@ class TestConsumer:
         listener1 = Listener(
             connection_parameters=consumer.connection_parameters,
             details=ListenerDetails(
-                callback=lambda x: x, queue_name="test_queue", workers=1, decoder=None
+                callback=lambda x: x,
+                queue_name="test_queue",
+                workers=1,
+                decoder=None,
+                restart=False,
+                auto_ack=True,
             ),
         )
         listener2 = Listener(
             connection_parameters=consumer.connection_parameters,
             details=ListenerDetails(
-                callback=lambda x: x, queue_name="test_queue", workers=1, decoder=None
+                callback=lambda x: x,
+                queue_name="test_queue",
+                workers=1,
+                decoder=None,
+                restart=False,
+                auto_ack=True,
             ),
         )
         consumer.listeners = [listener1, listener2]

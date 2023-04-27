@@ -96,7 +96,7 @@ class Listener:
             channel.basic_consume(
                 queue=self.details.queue_name,
                 on_message_callback=self._callback,
-                auto_ack=True,
+                auto_ack=self.details.auto_ack,
             )
 
             # TODO: Use this instead for more control of what variables to pass?

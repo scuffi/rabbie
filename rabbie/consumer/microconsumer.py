@@ -29,6 +29,7 @@ class MicroConsumer:
         workers: int = 1,
         decoder: Optional["Decoder"] = None,
         restart: bool = True,
+        auto_acknowledge: bool = True,
     ):
         """Listen for messages on a specific queue
 
@@ -46,6 +47,7 @@ class MicroConsumer:
                 workers=workers,
                 decoder=decoder or self.default_decoder,
                 restart=restart,
+                auto_ack=auto_acknowledge,
             )
 
             # Add the listener details to ListenerDetails list
