@@ -6,6 +6,10 @@ from ...encoder import Encoder
 
 
 class Publisher:
+    """
+    Publisher allows simple publishing of messages to a given exchange.
+    """
+
     def __init__(
         self,
         connection: pika.BaseConnection,
@@ -47,7 +51,7 @@ class Publisher:
           body (str): The body to be published to the queue or exchange.
           properties (Properties): An optional parameter that allows you to set additional properties for
         the body being published, such as body headers or delivery mode. It is an instance of the
-        `pika.BasicProperties` class.
+        `rabbie.Properties` class.
           queue (str): The name of the queue to which the body will be published. If not specified, the
         body will be published to the default queue.
           exchange (str): The exchange to which the body will be published. If not specified, the default
