@@ -1,5 +1,7 @@
 from pika.adapters.blocking_connection import BlockingChannel
-from pika.spec import BasicProperties
+from pika.spec import BasicProperties as Properties
+
+from ..encoder import Encoder
 
 
 class Channel:
@@ -46,11 +48,12 @@ class Channel:
 
     def publish(
         self,
-        queue: str,
         body: str,
+        queue: str,
         exchange: str = None,
-        properties: BasicProperties = None,
+        properties: Properties = None,
         mandatory: bool = False,
+        encoder: Encoder = None,
     ):
         """
         This function publishes a message to a specified queue or exchange with optional properties and
@@ -71,6 +74,14 @@ class Channel:
         False, the message will be silently dropped if it cannot be delivered to any queue. Defaults to
         False
         """
+        # If the encoder is not None, we need to reassign message to an 'Encoded' version
+        if encoder:
+            body = encoder.encode(body)
+
+            # We also want to override the content_type, if properties are given
+            if properties is not None:
+                properties.content_type = encoder.content_type()
+
         self._channel.basic_publish(
             exchange=exchange or "",
             routing_key=queue,
