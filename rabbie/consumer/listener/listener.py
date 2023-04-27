@@ -14,6 +14,7 @@ from ...logger import logger as log
 
 import pika
 from pika.exceptions import AMQPError
+from pika.adapters.blocking_connection import BlockingChannel
 
 
 class Listener:
@@ -32,7 +33,11 @@ class Listener:
         return all([worker.is_alive() for worker in self.workers])
 
     def _callback(
-        self, channel: Channel, method: Method, properties: Properties, body: Any
+        self,
+        channel: BlockingChannel,
+        method: Method,
+        properties: Properties,
+        body: Any,
     ):
         """
         This function is called when a message is received on the queue.
@@ -51,7 +56,7 @@ class Listener:
 
         all_arguments = {
             # TODO: Wrap this channel in a custom channel, that provides utility functionality over acks, nacks, publishing, etc
-            Channel: channel,
+            Channel: Channel(channel),
             Method: method,
             Properties: properties,
         }
