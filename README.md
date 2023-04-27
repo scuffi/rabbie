@@ -116,7 +116,7 @@ if __name__ == "__main__":
     consumer.add_consumer(my_module.nested_consumer)
     consumer.start()
 ```
-### 💾 Decoders
+### 💾 Encoders & Decoders
 When receiving messages through Rabbie, you have the option to pass a Decoder. This acts as a preliminary step before the data passes into your function. If you received a message like: `{"hello": "world"}`, you can use the inbuilt `JSONDecoder` to automatically parse this text into a dictionary:
 ```python
 from rabbie import Consumer, JSONDecoder
@@ -153,7 +153,54 @@ consumer = Consumer(
     default_decoder=CustomDecoder()
 )
 ```
+
+Encoders work in the exact same way (just to encode outgoing messages rather than decode incoming), however you have a new function `content_type()` to override when encoding the message in a particular fashion, this will be the content type sent in the request, and should reflect the bodies applicatio type. *For example the inbuilt JSONEncoder returns a 'application/json' content type*
+```python
+from rabbie import Encoder
+
+class CustomEncoder(Encoder):
+    def encoder(self, body: bytes):
+        return # Your custom logic here
+
+    def content_type(self):
+        return "application/my_type"
+```
     
+### 🖨️ Producers
+Producers allow for a simple way to publish messages to exchanges. A simple example would be like so:
+```python
+from rabbie import Producer, JSONEncoder
+
+producer = Producer(
+    host="localhost",
+    port=5672,
+    username="user",
+    password="password",
+)
+
+if __name__ == "__main__":
+    with producer.connect() as channel:
+        channel.publish("hello world!", "my_queue")
+```
+
+Producers also support encoders (same interfaces as decoders, just the opposing side) like so:
+```python
+from rabbie import Producer, JSONEncoder
+
+from my_encoders import CustomEncoder
+
+producer = Producer(
+    host="localhost",
+    port=5672,
+    username="user",
+    password="password",
+)
+
+if __name__ == "__main__":
+    with producer.connect(encoder=JSONEncoder()) as channel:
+        channel.publish({"hello": "world"}, "my_queue", encoder=CustomEncoder())
+```
+> ℹ️ Notice above two encoders are specified. Any parameters passed in to the `channel.publish()` method will take priority, so `CustomEncoder` will be used. It is sometimes easier to define a default value in `producer.connect()` if you will be publishing a lot of similar messages though.
 # TODO
 - Hot Reloading (Refresh listeners on file changes) 🔄
 
