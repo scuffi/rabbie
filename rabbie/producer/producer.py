@@ -4,7 +4,7 @@ import pika
 
 
 from ..connection import Details
-from ..encoder import Encoder
+from ..encoder import Encoder, AutoEncoder
 from .publisher import Publisher
 
 
@@ -23,10 +23,31 @@ class Producer:
         port: Optional[str] = Details.PORT,
         username: Optional[str] = Details.USERNAME,
         password: Optional[str] = Details.PASSWORD,
-        encoder: Optional[Encoder] = None,
+        encoder: Optional[Encoder] = AutoEncoder(),
         connection_type: pika.BaseConnection = pika.BlockingConnection,
         **kwargs,
     ):
+        """
+        This is a constructor function that initializes a connection to a RabbitMQ queue using the given
+        parameters.
+
+        Args:
+          host (Optional[str]): The hostname or IP address of the RabbitMQ server to connect to.
+          port (Optional[str]): The port number used to connect to the RabbitMQ server. If not provided, it
+        will use the default port number specified in the Details.HOST constant.
+          username (Optional[str]): The username used for authentication when connecting to the queue.
+          password (Optional[str]): The password parameter is an optional string that represents the
+        password used to authenticate the connection to the queue. It is one of the parameters that can be
+        passed in as a keyword argument when initializing an instance of the class. If not provided, it
+        defaults to the value of the PASSWORD constant defined in the Details
+          encoder (Optional[Encoder]): The `encoder` parameter is an optional argument that specifies the
+        encoding method to be used for messages sent to the queue. It defaults to an `AutoEncoder` instance,
+        which automatically detects the appropriate encoding method based on the message content.
+          connection_type (pika.BaseConnection): The type of connection to be established with the RabbitMQ
+        server. It is set to `pika.BlockingConnection` by default, which means that the connection will
+        block the execution of the program until it is established. Other options include
+        `pika.SelectConnection` and `pika.AsyncioConnection
+        """
         self._host = host
         self._port = port
         self._username = username

@@ -10,7 +10,7 @@ from .listener import Listener, ListenerDetails
 
 from ..supervisor import Supervisor
 
-from ..decoder import JSONDecoder
+from ..decoder import AutoDecoder
 from ..logger import logger as log
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ class Consumer:
         port: Optional[str] = Details.PORT,
         username: Optional[str] = Details.USERNAME,
         password: Optional[str] = Details.PASSWORD,
-        default_decoder: Optional["Decoder"] = None,
+        default_decoder: Optional["Decoder"] = AutoDecoder(),
         **kwargs,
     ):
         """Instantiate a new Consumer object with the given connection details.
@@ -45,7 +45,7 @@ class Consumer:
             port (Optional[str], optional): The port of the broker. Defaults to Details.PORT.
             username (Optional[str], optional): The authenticated username. Defaults to Details.USERNAME.
             password (Optional[str], optional): The authenticated password. Defaults to Details.PASSWORD.
-            default_decoder (Optional[Decoder], optional): The default decoder for decoding messages. Defaults to None.
+            default_decoder (Optional[Decoder], optional): The default decoder for decoding messages. Defaults to AutoDecoder
 
             Any other arguments are passed directly in to the connection parameters.
         """
@@ -179,5 +179,5 @@ consumer = Consumer(
     port=5672,
     username="user",
     password="password",
-    default_decoder=JSONDecoder(),
+    default_decoder=AutoDecoder(),
 )
