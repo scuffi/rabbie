@@ -1,7 +1,7 @@
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.spec import BasicProperties as Properties
 
-from ..encoder import Encoder
+from ..encoder import Encoder, AutoEncoder
 
 
 class Channel:
@@ -53,7 +53,7 @@ class Channel:
         exchange: str = None,
         properties: Properties = None,
         mandatory: bool = False,
-        encoder: Encoder = None,
+        encoder: Encoder = AutoEncoder(),
         **kwargs,
     ):
         """
