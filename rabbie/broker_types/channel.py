@@ -74,6 +74,7 @@ class Channel:
         True, the message will be returned to the sender if it cannot be delivered to any queue. If set to
         False, the message will be silently dropped if it cannot be delivered to any queue. Defaults to
         False
+          encoder (Encoder): The encoder to use when encoding messages. Default is AutoEncoder
         Any other arguments will get passed into the queue declaration.
         """
         # If the encoder is not None, we need to reassign message to an 'Encoded' version
