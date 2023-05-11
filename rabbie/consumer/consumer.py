@@ -3,6 +3,7 @@ from typing import Optional, List, Union, TYPE_CHECKING
 import time
 
 import pika
+from pika.connection import Parameters
 
 from .microconsumer import MicroConsumer
 from ..connection import Details
@@ -36,6 +37,7 @@ class Consumer:
         username: Optional[str] = Details.USERNAME,
         password: Optional[str] = Details.PASSWORD,
         default_decoder: Optional["Decoder"] = AutoDecoder(),
+        connection_parameters: Optional[Parameters] = None,
         **kwargs,
     ):
         """Instantiate a new Consumer object with the given connection details.
@@ -46,6 +48,7 @@ class Consumer:
             username (Optional[str], optional): The authenticated username. Defaults to Details.USERNAME.
             password (Optional[str], optional): The authenticated password. Defaults to Details.PASSWORD.
             default_decoder (Optional[Decoder], optional): The default decoder for decoding messages. Defaults to AutoDecoder
+            connection_parameters (Optional[ConnectionParameters]): Override the default connection parameters, helpful if using URLParams
 
             Any other arguments are passed directly in to the connection parameters.
         """
@@ -59,7 +62,7 @@ class Consumer:
         credentials = pika.PlainCredentials(self._username, self._password)
 
         # Create the parameters for connection to the Queue
-        self.connection_parameters = pika.ConnectionParameters(
+        self.connection_parameters = connection_parameters or pika.ConnectionParameters(
             port=self._port,
             host=self._host,
             credentials=credentials,
