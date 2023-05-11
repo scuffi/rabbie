@@ -68,6 +68,8 @@ if __name__ == "__main__":
 
 > ℹ️ Each Rabbie worker will be in use the entire time your custom function is running, i.e. if you have 3 workers, they can all process 1 message at a time and will not pick up anymore until the entire process has been complete. *(You can add a prefetch to allow for internal message queues)*
 
+> ℹ️ If you're not using default connection details (Username & Password), you can provide a pika.Parameters object (such as URLParameters) into the `Consumer(connection_parameters=...)`
+
 ### 🎱 Parameters
 Rabbie automatically picks up the parameters your function wants depending on the types of them:
 ```python
