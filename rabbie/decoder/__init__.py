@@ -1,2 +1,2 @@
 from .decoder import Decoder
-from .decoders import JSONDecoder
+from .decoders import JSONDecoder, AutoDecoder

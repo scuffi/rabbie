@@ -6,13 +6,13 @@ from pika.connection import ConnectionParameters
 
 from .listener import Listener, ListenerDetails
 from ..connection import Details
-from ..decoder import Decoder
+from ..decoder import Decoder, AutoDecoder
 
 
 class MicroConsumer:
     def __init__(
         self,
-        default_decoder: Optional["Decoder"] = None,
+        default_decoder: Optional["Decoder"] = AutoDecoder(),
     ) -> None:
         """MicroConsumer object holds listeners for a Consumer to pick up
 
