@@ -2,6 +2,7 @@ from functools import wraps
 import logging
 from typing import Optional, List, Union, TYPE_CHECKING
 import time
+from multiprocess import Manager
 
 import pika
 from pika.connection import Parameters
@@ -156,6 +157,8 @@ class Consumer:
         # Temporarily disabling reloading
         reload = False
 
+        self._create_shared_registry()
+
         if reload:
             supervisor = Supervisor(
                 "./",
@@ -169,10 +172,20 @@ class Consumer:
 
         self._halt(halt)
 
+    def _create_shared_registry(self):
+        """Create a shared registry for all workers to interact with.
+
+        Note: This must be protected by __name__ == "__main__" check, ensure consumer.start() is protected
+        or else an error will arise.
+        """
+        # Create a manager instance so all workers can have a central registry
+        manager = Manager()
+        self.shared_registry = manager.dict()
+
     def _start_listeners(self):
         log.info(f"Starting {len(self.listeners)} listeners")
         for listener in self.listeners:
-            listener.start()
+            listener.start(self.shared_registry)
 
     def _stop_listeners(self):
         log.info(

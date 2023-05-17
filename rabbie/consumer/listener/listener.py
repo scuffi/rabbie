@@ -1,7 +1,11 @@
 import os
 import sys
 import signal
-from multiprocess import Process
+import uuid
+
+from multiprocess import Process, Manager
+from multiprocess.managers import DictProxy
+
 from inspect import signature
 import traceback
 
@@ -9,6 +13,7 @@ from typing import Callable, List, Any
 import time
 
 from .listener_details import ListenerDetails
+from .listener_status import Status
 from ...broker_types import Channel, Method, Properties
 from ...logger import logger as log
 
@@ -31,6 +36,15 @@ class Listener:
 
     def is_listening(self) -> bool:
         return all([worker.is_alive() for worker in self.workers])
+
+    def _change_status(self, registry: DictProxy, status: Status):
+        """Change the status of the process we're inside of
+
+        Args:
+            registry (DictProxy): The shared registry
+            status (Status): The new status
+        """
+        registry[os.getpid()] = status
 
     def _callback(
         self,
@@ -81,7 +95,7 @@ class Listener:
         except Exception:
             traceback.print_exc()
 
-    def _start_worker(self, index: int):
+    def _start_worker(self, uid: str, registry: DictProxy):
         # TODO: Change this function, it's ugly
         try:
             # Create a BlockingConnection into the queue
@@ -113,13 +127,24 @@ class Listener:
             # Register the signal handler for SIGTERM
             signal.signal(signal.SIGTERM, handle_sigterm)
 
+            if registry[os.getpid()] == Status.FAILED:
+                log.info(f"[{os.getpid()}] Reconnected to broker, listener started.")
+                self._change_status(registry, Status.RUNNING)
+
             channel.start_consuming()
 
         except AMQPError:
             if self.details.restart:
-                log.error("Connection failed, retrying in 2s...")
+                if registry[os.getpid()] != Status.FAILED:
+                    log.error(
+                        f"[{os.getpid()}] Connection to broker failed. Attempting to reconnect..."
+                    )
+
+                    # Set the status of this process to failed.
+                    self._change_status(registry, Status.FAILED)
+
                 time.sleep(2)
-                self._start_worker(index)
+                self._start_worker(uid)
 
     def stop(self):
         """
@@ -132,7 +157,7 @@ class Listener:
             # Wait for the process to finish
             worker.join()
 
-    def start(self):
+    def start(self, registry: DictProxy):
         """
         Execute each consumer in a new process in a PoolExecutor
 
@@ -145,9 +170,13 @@ class Listener:
 
         self.workers.clear()
 
-        for i in range(workers):
-            p = Process(target=self._start_worker, args=(i,))
+        for _ in range(workers):
+            p = Process(target=self._start_worker, args=(_, registry))
             p.start()
+
+            # Add the process ID to the registry
+            registry[p.pid] = Status.STARTING
+
             self.workers.append(p)
 
         log.info(
