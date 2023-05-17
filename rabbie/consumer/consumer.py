@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Optional, List, Union, Callable, TYPE_CHECKING
+from typing import Optional, List, Union, Callable
 import time
 from multiprocess import Manager
 
@@ -12,14 +12,10 @@ from .listener import Listener, ListenerDetails, Status
 
 from ..supervisor import Supervisor
 
-from ..decoder import AutoDecoder
-from ..encoder import AutoEncoder
+from ..decoder import Decoder, AutoDecoder
+from ..encoder import Encoder, AutoEncoder
 from ..events import event_handler
 from ..logger import logger as log
-
-if TYPE_CHECKING:
-    from ..decoder import Decoder
-    from ..encoder import Encoder
 
 
 class Consumer:
@@ -40,7 +36,7 @@ class Consumer:
         port: Optional[str] = Details.PORT,
         username: Optional[str] = Details.USERNAME,
         password: Optional[str] = Details.PASSWORD,
-        default_decoder: Optional["Decoder"] = AutoDecoder(),
+        default_decoder: Optional[Decoder] = AutoDecoder(),
         connection_parameters: Optional[Parameters] = None,
         **kwargs,
     ):
@@ -79,10 +75,10 @@ class Consumer:
         self,
         queue: str = Details.QUEUE_NAME,
         workers: int = 1,
-        decoder: Optional["Decoder"] = None,
+        decoder: Optional[Decoder] = None,
         restart: bool = True,
         return_queue: Optional[str] = None,
-        encoder: Optional["Encoder"] = AutoEncoder(),
+        encoder: Optional[Encoder] = AutoEncoder(),
         auto_acknowledge: bool = True,
         qos_prefetch_size: int = 0,
         qos_prefetch_count: int = 0,

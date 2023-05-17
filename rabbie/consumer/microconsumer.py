@@ -13,7 +13,7 @@ from ..encoder import Encoder, AutoEncoder
 class MicroConsumer:
     def __init__(
         self,
-        default_decoder: Optional["Decoder"] = AutoDecoder(),
+        default_decoder: Optional[Decoder] = AutoDecoder(),
     ) -> None:
         """MicroConsumer object holds listeners for a Consumer to pick up
 
@@ -28,10 +28,10 @@ class MicroConsumer:
         self,
         queue: str = Details.QUEUE_NAME,
         workers: int = 1,
-        decoder: Optional["Decoder"] = None,
+        decoder: Optional[Decoder] = None,
         restart: bool = True,
         return_queue: Optional[str] = None,
-        encoder: Optional["Encoder"] = AutoEncoder(),
+        encoder: Optional[Encoder] = AutoEncoder(),
         auto_acknowledge: bool = True,
         qos_prefetch_size: int = 0,
         qos_prefetch_count: int = 0,
