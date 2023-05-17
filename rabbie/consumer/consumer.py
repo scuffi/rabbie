@@ -1,6 +1,6 @@
 from functools import wraps
 import logging
-from typing import Optional, List, Union, TYPE_CHECKING
+from typing import Optional, List, Union, Callable, TYPE_CHECKING
 import time
 from multiprocess import Manager
 
@@ -82,6 +82,15 @@ class Consumer:
         decoder: Optional["Decoder"] = None,
         restart: bool = True,
         auto_acknowledge: bool = True,
+        qos_prefetch_size: int = 0,
+        qos_prefetch_count: int = 0,
+        global_qos: bool = False,
+        passive_queue: bool = False,
+        durable_queue: bool = False,
+        exclusive_queue: bool = False,
+        auto_delete_queue: bool = False,
+        # Must accept a single argument 'channel', to allow for any further manipulation that is not supported here
+        configuration_callback: Callable = None,
     ):
         """Listen for messages on a specific queue
 
@@ -97,11 +106,19 @@ class Consumer:
                 connection_parameters=self.connection_parameters,
                 details=ListenerDetails(
                     callback=function,
-                    queue_name=queue,
                     workers=workers,
                     decoder=decoder or self.default_decoder,
                     restart=restart,
                     auto_ack=auto_acknowledge,
+                    queue_name=queue,
+                    queue_durable=durable_queue,
+                    queue_exclusive=exclusive_queue,
+                    queue_passive=passive_queue,
+                    queue_auto_delete=auto_delete_queue,
+                    qos_prefetch_size=qos_prefetch_size,
+                    qos_prefetch_count=qos_prefetch_count,
+                    global_qos=global_qos,
+                    configuration_callback=configuration_callback,
                 ),
             )
 

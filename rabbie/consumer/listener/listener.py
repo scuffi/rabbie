@@ -103,14 +103,29 @@ class Listener:
             # Open a channel to receive messages through
             channel = connection.channel()
 
-            channel.queue_declare(queue=self.details.queue_name)
-            channel.basic_qos(prefetch_count=1)
+            channel.queue_declare(
+                queue=self.details.queue_name,
+                passive=self.details.queue_passive,
+                durable=self.details.queue_passive,
+                exclusive=self.details.queue_exclusive,
+                auto_delete=self.details.queue_auto_delete,
+            )
+
+            channel.basic_qos(
+                prefetch_count=self.details.qos_prefetch_count,
+                prefetch_size=self.details.qos_prefetch_size,
+                global_qos=self.details.global_qos,
+            )
 
             channel.basic_consume(
                 queue=self.details.queue_name,
                 on_message_callback=self._callback,
                 auto_ack=self.details.auto_ack,
             )
+
+            # Allow for manipulation of channel before we start consuming incase we missed anything to do with configuration
+            if self.details.configuration_callback:
+                self.details.configuration_callback(channel)
 
             # TODO: Use this instead for more control of what variables to pass?
             # for method, properties, body in channel.consume(self.queue_name):
@@ -143,7 +158,7 @@ class Listener:
             if self.details.restart:
                 if registry[os.getpid()] != Status.DISCONNECTED:
                     log.error(
-                        f"[{os.getpid()}] [red]Connection to broker failed. Attempting to reconnect..."
+                        f"[{os.getpid()}] [red]Connection to broker failed. Worker will reconnect when possible."
                     )
 
                     # Set the status of this process to failed.

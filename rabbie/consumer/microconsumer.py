@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Callable
 
 from functools import wraps
 
@@ -30,6 +30,15 @@ class MicroConsumer:
         decoder: Optional["Decoder"] = None,
         restart: bool = True,
         auto_acknowledge: bool = True,
+        qos_prefetch_size: int = 0,
+        qos_prefetch_count: int = 0,
+        global_qos: bool = False,
+        passive_queue: bool = False,
+        durable_queue: bool = False,
+        exclusive_queue: bool = False,
+        auto_delete_queue: bool = False,
+        # Must accept a single argument 'channel', to allow for any further manipulation that is not supported here
+        configuration_callback: Callable = None,
     ):
         """Listen for messages on a specific queue
 
@@ -43,11 +52,19 @@ class MicroConsumer:
         def decorator(function):
             ls = ListenerDetails(
                 callback=function,
-                queue_name=queue,
                 workers=workers,
                 decoder=decoder or self.default_decoder,
                 restart=restart,
                 auto_ack=auto_acknowledge,
+                queue_name=queue,
+                queue_durable=durable_queue,
+                queue_exclusive=exclusive_queue,
+                queue_passive=passive_queue,
+                queue_auto_delete=auto_delete_queue,
+                qos_prefetch_size=qos_prefetch_size,
+                qos_prefetch_count=qos_prefetch_count,
+                global_qos=global_qos,
+                configuration_callback=configuration_callback,
             )
 
             # Add the listener details to ListenerDetails list
