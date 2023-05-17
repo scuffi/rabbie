@@ -9,7 +9,7 @@ from pika.connection import Parameters
 
 from .microconsumer import MicroConsumer
 from ..connection import Details
-from .listener import Listener, ListenerDetails
+from .listener import Listener, ListenerDetails, Status
 
 from ..supervisor import Supervisor
 
@@ -170,6 +170,14 @@ class Consumer:
         else:
             self._start_listeners()
 
+        self._await_startup(self.shared_registry)
+
+        workers_amount = len(self.shared_registry.keys())
+
+        log.info(
+            f"[green]Started {len(self.listeners)} listeners ({workers_amount} {'worker' if workers_amount == 1 else 'workers'})"
+        )
+
         self._halt(halt)
 
     def _create_shared_registry(self):
@@ -183,21 +191,36 @@ class Consumer:
         self.shared_registry = manager.dict()
 
     def _start_listeners(self):
-        log.info(f"Starting {len(self.listeners)} listeners")
+        """Start all the listeners & their workers"""
+        workers_amount = sum(listener.details.workers for listener in self.listeners)
+        log.info(
+            f"Starting {len(self.listeners)} listeners ({workers_amount} {'worker' if workers_amount == 1 else 'workers'})"
+        )
         for listener in self.listeners:
             listener.start(self.shared_registry)
 
     def _stop_listeners(self):
+        """Stop all the currently running listeners & workers"""
+        workers_amount = sum(len(listener.workers) for listener in self.listeners)
         log.info(
-            f"[red]Stopping {len(self.listeners)} listeners ({sum([len(listener.workers) for listener in self.listeners])} workers)"
+            f"[red]Stopping {len(self.listeners)} listeners ({workers_amount} {'worker' if workers_amount == 1 else 'workers'})"
         )
         for listener in self.listeners:
             listener.stop()
 
-        # ? We don't want to clear this list, or else when we reload some files don't get reloaded and will get cleared here
-        # self.listeners.clear()
+    def _await_startup(self, registry):
+        """Wait for all known listeners to be started, then continue."""
+        while not all(
+            enum_value == Status.CONNECTED for enum_value in registry.values()
+        ):
+            ...
 
     def _halt(self, halt: bool):
+        """Halt the code for good
+
+        Args:
+            halt (bool): Halt or not
+        """
         try:
             while halt:
                 time.sleep(1)

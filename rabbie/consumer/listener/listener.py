@@ -95,7 +95,7 @@ class Listener:
         except Exception:
             traceback.print_exc()
 
-    def _start_worker(self, uid: str, registry: DictProxy):
+    def _start_worker(self, index: int, registry: DictProxy):
         # TODO: Change this function, it's ugly
         try:
             # Create a BlockingConnection into the queue
@@ -127,24 +127,31 @@ class Listener:
             # Register the signal handler for SIGTERM
             signal.signal(signal.SIGTERM, handle_sigterm)
 
-            if registry[os.getpid()] == Status.FAILED:
-                log.info(f"[{os.getpid()}] Reconnected to broker, listener started.")
-                self._change_status(registry, Status.RUNNING)
+            # Only log that we've 're'connected if the worker was previously down.
+            if registry[os.getpid()] == Status.DISCONNECTED:
+                log.info(f"[{os.getpid()}] [green]Reconnected to broker.")
+
+            # We can assume now that we've connected successfully.
+            self._change_status(registry, Status.CONNECTED)
+
+            log.info(
+                f"[{os.getpid()}] [green]Listening to [bold cyan]{self.details.queue_name}[/bold cyan]"
+            )
 
             channel.start_consuming()
 
         except AMQPError:
             if self.details.restart:
-                if registry[os.getpid()] != Status.FAILED:
+                if registry[os.getpid()] != Status.DISCONNECTED:
                     log.error(
-                        f"[{os.getpid()}] Connection to broker failed. Attempting to reconnect..."
+                        f"[{os.getpid()}] [red]Connection to broker failed. Attempting to reconnect..."
                     )
 
                     # Set the status of this process to failed.
-                    self._change_status(registry, Status.FAILED)
+                    self._change_status(registry, Status.DISCONNECTED)
 
                 time.sleep(2)
-                self._start_worker(uid)
+                self._start_worker(index, registry)
 
     def stop(self):
         """
@@ -170,8 +177,8 @@ class Listener:
 
         self.workers.clear()
 
-        for _ in range(workers):
-            p = Process(target=self._start_worker, args=(_, registry))
+        for i in range(workers):
+            p = Process(target=self._start_worker, args=(i, registry))
             p.start()
 
             # Add the process ID to the registry
@@ -179,6 +186,6 @@ class Listener:
 
             self.workers.append(p)
 
-        log.info(
-            f"[green]Started listening to [bold cyan]{self.details.queue_name}[/bold cyan] with {workers} {'workers' if workers > 1 else 'worker'}"
-        )
+        # log.info(
+        #     f"[green]Started listening to [bold cyan]{self.details.queue_name}[/bold cyan] with {workers} {'workers' if workers > 1 else 'worker'}"
+        # )
