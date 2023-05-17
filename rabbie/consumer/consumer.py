@@ -1,4 +1,5 @@
 from functools import wraps
+import logging
 from typing import Optional, List, Union, TYPE_CHECKING
 import time
 
@@ -71,6 +72,8 @@ class Consumer:
 
         self.listeners: List[Listener] = []
 
+        self.suppress_internal_logs()
+
     def listen(
         self,
         queue: str = Details.QUEUE_NAME,
@@ -126,6 +129,20 @@ class Consumer:
         if isinstance(consumer, Consumer):
             self.listeners.extend(consumer.listeners)
             return
+
+    def suppress_internal_logs(self, suppress: bool = True):
+        """Suppress internal Pika logs.
+
+        Helpful to toggle if something is going wrong.
+
+        Args:
+            suppress (bool, optional): If internal logs should be suppressed. Defaults to True.
+        """
+        # Revisit this; not sure why logger.disabled = True isn't working here?
+        if suppress:
+            logging.getLogger("pika").setLevel(logging.CRITICAL + 1)
+        else:
+            logging.getLogger("pika").setLevel(0)
 
     def start(self, reload: bool = False, halt: bool = True):
         """
