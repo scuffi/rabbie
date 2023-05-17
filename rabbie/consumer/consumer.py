@@ -15,6 +15,7 @@ from ..supervisor import Supervisor
 
 from ..decoder import AutoDecoder
 from ..encoder import AutoEncoder
+from ..events import event_handler
 from ..logger import logger as log
 
 if TYPE_CHECKING:
@@ -195,6 +196,8 @@ class Consumer:
 
         self._await_startup(self.shared_registry)
 
+        event_handler._call("on_start")
+
         workers_amount = len(self.shared_registry.keys())
 
         log.info(
@@ -230,6 +233,8 @@ class Consumer:
         )
         for listener in self.listeners:
             listener.stop()
+
+        event_handler._call("on_stop")
 
     def _await_startup(self, registry):
         """Wait for all known listeners to be started, then continue."""
