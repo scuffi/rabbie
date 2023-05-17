@@ -8,7 +8,7 @@ from multiprocess.managers import DictProxy
 from inspect import signature
 import traceback
 
-from typing import Callable, List, Any
+from typing import List, Any
 import time
 
 from .listener_details import ListenerDetails

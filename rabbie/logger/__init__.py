@@ -1,12 +1,22 @@
 import logging
 from rich.logging import RichHandler
 
-FORMAT = "%(message)s"
-logging.basicConfig(
-    level="NOTSET", format=FORMAT, datefmt="[%X]", handlers=[RichHandler(markup=True)]
-)
 
-logger = logging.getLogger("rabbie")
+class RabbieLogger(logging.Logger):
+    def __init__(self, name):
+        super().__init__(name)
+        self.setLevel(logging.INFO)  # Set the minimum level for logging
 
-# Disable pika logging
-logging.getLogger("pika").setLevel(logging.WARNING)
+        # Create a handler and set its level
+        handler = RichHandler(markup=True)
+        handler.setLevel(logging.INFO)
+
+        # Create a formatter and add it to the handler
+        formatter = logging.Formatter("%(message)s")
+        handler.setFormatter(formatter)
+
+        # Add the handler to the logger
+        self.addHandler(handler)
+
+
+logger = RabbieLogger(__name__)
