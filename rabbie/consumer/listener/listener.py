@@ -209,7 +209,3 @@ class Listener:
             registry[p.pid] = Status.STARTING
 
             self.workers.append(p)
-
-        # log.info(
-        #     f"[green]Started listening to [bold cyan]{self.details.queue_name}[/bold cyan] with {workers} {'workers' if workers > 1 else 'worker'}"
-        # )
