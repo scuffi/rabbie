@@ -1,9 +1,8 @@
 import os
 import sys
 import signal
-import uuid
 
-from multiprocess import Process, Manager
+from multiprocess import Process
 from multiprocess.managers import DictProxy
 
 from inspect import signature
