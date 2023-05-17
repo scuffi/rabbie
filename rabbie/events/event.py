@@ -5,7 +5,7 @@ from functools import wraps
 
 class Event:
     def __init__(self) -> None:
-        self.registry = defaultdict(list)
+        self._registry = defaultdict(list)
 
     def register(self, event_id: str):
         """Register a function with an event_id
@@ -34,7 +34,7 @@ class Event:
             event (str): The event id
             callback (Callable): The callback function
         """
-        self.registry[event].append(callback)
+        self._registry[event].append(callback)
 
     def _call(self, event: str, *args, **kwargs):
         """Call all the registered callbacks for an event sequentially
@@ -42,5 +42,5 @@ class Event:
         Args:
             event (str): The event ID to trigger
         """
-        for callback in self.registry[event]:
+        for callback in self._registry[event]:
             callback(*args, **kwargs)
