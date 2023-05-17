@@ -2,6 +2,7 @@ from typing import Optional, Callable
 from dataclasses import dataclass
 
 from ...decoder import Decoder
+from ...encoder import Encoder
 
 
 @dataclass
@@ -24,3 +25,7 @@ class ListenerDetails:
     restart: bool
     auto_ack: bool
     configuration_callback: Callable
+
+    # Configuration settings for auto-publishing
+    return_queue: Optional[str]
+    encoder: Optional[Encoder]

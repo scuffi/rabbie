@@ -14,10 +14,12 @@ from .listener import Listener, ListenerDetails, Status
 from ..supervisor import Supervisor
 
 from ..decoder import AutoDecoder
+from ..encoder import AutoEncoder
 from ..logger import logger as log
 
 if TYPE_CHECKING:
     from ..decoder import Decoder
+    from ..encoder import Encoder
 
 
 class Consumer:
@@ -81,6 +83,8 @@ class Consumer:
         workers: int = 1,
         decoder: Optional["Decoder"] = None,
         restart: bool = True,
+        return_queue: Optional[str] = None,
+        encoder: Optional["Encoder"] = AutoEncoder(),
         auto_acknowledge: bool = True,
         qos_prefetch_size: int = 0,
         qos_prefetch_count: int = 0,
@@ -119,6 +123,8 @@ class Consumer:
                     qos_prefetch_count=qos_prefetch_count,
                     global_qos=global_qos,
                     configuration_callback=configuration_callback,
+                    return_queue=return_queue,
+                    encoder=encoder,
                 ),
             )
 

@@ -7,6 +7,7 @@ from pika.connection import ConnectionParameters
 from .listener import Listener, ListenerDetails
 from ..connection import Details
 from ..decoder import Decoder, AutoDecoder
+from ..encoder import Encoder, AutoEncoder
 
 
 class MicroConsumer:
@@ -29,6 +30,8 @@ class MicroConsumer:
         workers: int = 1,
         decoder: Optional["Decoder"] = None,
         restart: bool = True,
+        return_queue: Optional[str] = None,
+        encoder: Optional["Encoder"] = AutoEncoder(),
         auto_acknowledge: bool = True,
         qos_prefetch_size: int = 0,
         qos_prefetch_count: int = 0,
@@ -65,6 +68,8 @@ class MicroConsumer:
                 qos_prefetch_count=qos_prefetch_count,
                 global_qos=global_qos,
                 configuration_callback=configuration_callback,
+                return_queue=return_queue,
+                encoder=encoder,
             )
 
             # Add the listener details to ListenerDetails list

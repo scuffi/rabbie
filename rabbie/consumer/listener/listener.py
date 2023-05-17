@@ -83,14 +83,24 @@ class Listener:
         }
 
         # Run the callback function safely, so if it errors, the listener won't stop
-        self._run_safely(self.details.callback, **arguments)
+        self._run_safely(self.details, Channel(channel), **arguments)
 
-    def _run_safely(self, callback: Callable, *args, **kwargs):
+    def _run_safely(self, details: ListenerDetails, channel: Channel, *args, **kwargs):
         """
         This function runs a callback function safely, whilst still printing any tracebacks.
         """
         try:
-            callback(*args, **kwargs)
+            # Call the function, and keep it's output incase it requires repushing to the channel
+            output = details.callback(*args, **kwargs)
+
+            # If there was data returned, we want to send this data back to the message broker
+            if output is not None:
+                # Use specified encoder and send back to same queue
+                channel.publish(
+                    body=output,
+                    queue=self.details.return_queue or self.details.queue_name,
+                    encoder=self.details.encoder,
+                )
         except Exception:
             traceback.print_exc()
 
