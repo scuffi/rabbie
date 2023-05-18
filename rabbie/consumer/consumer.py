@@ -1,21 +1,21 @@
 from functools import wraps
-from typing import Optional, List, Union, TYPE_CHECKING
+from typing import Optional, List, Union, Callable
 import time
+from multiprocess import Manager
 
 import pika
 from pika.connection import Parameters
 
 from .microconsumer import MicroConsumer
 from ..connection import Details
-from .listener import Listener, ListenerDetails
+from .listener import Listener, ListenerDetails, Status
 
 from ..supervisor import Supervisor
 
-from ..decoder import AutoDecoder
+from ..decoder import Decoder, AutoDecoder
+from ..encoder import Encoder, AutoEncoder
+from ..events import event_handler
 from ..logger import logger as log
-
-if TYPE_CHECKING:
-    from ..decoder import Decoder
 
 
 class Consumer:
@@ -36,7 +36,7 @@ class Consumer:
         port: Optional[str] = Details.PORT,
         username: Optional[str] = Details.USERNAME,
         password: Optional[str] = Details.PASSWORD,
-        default_decoder: Optional["Decoder"] = AutoDecoder(),
+        default_decoder: Optional[Decoder] = AutoDecoder(),
         connection_parameters: Optional[Parameters] = None,
         **kwargs,
     ):
@@ -75,9 +75,20 @@ class Consumer:
         self,
         queue: str = Details.QUEUE_NAME,
         workers: int = 1,
-        decoder: Optional["Decoder"] = None,
+        decoder: Optional[Decoder] = None,
         restart: bool = True,
+        return_queue: Optional[str] = None,
+        encoder: Optional[Encoder] = AutoEncoder(),
         auto_acknowledge: bool = True,
+        qos_prefetch_size: int = 0,
+        qos_prefetch_count: int = 0,
+        global_qos: bool = False,
+        passive_queue: bool = False,
+        durable_queue: bool = False,
+        exclusive_queue: bool = False,
+        auto_delete_queue: bool = False,
+        # Must accept a single argument 'channel', to allow for any further manipulation that is not supported here
+        configuration_callback: Callable = None,
     ):
         """Listen for messages on a specific queue
 
@@ -93,11 +104,21 @@ class Consumer:
                 connection_parameters=self.connection_parameters,
                 details=ListenerDetails(
                     callback=function,
-                    queue_name=queue,
                     workers=workers,
                     decoder=decoder or self.default_decoder,
                     restart=restart,
                     auto_ack=auto_acknowledge,
+                    queue_name=queue,
+                    queue_durable=durable_queue,
+                    queue_exclusive=exclusive_queue,
+                    queue_passive=passive_queue,
+                    queue_auto_delete=auto_delete_queue,
+                    qos_prefetch_size=qos_prefetch_size,
+                    qos_prefetch_count=qos_prefetch_count,
+                    global_qos=global_qos,
+                    configuration_callback=configuration_callback,
+                    return_queue=return_queue,
+                    encoder=encoder,
                 ),
             )
 
@@ -139,6 +160,8 @@ class Consumer:
         # Temporarily disabling reloading
         reload = False
 
+        self._create_shared_registry()
+
         if reload:
             supervisor = Supervisor(
                 "./",
@@ -150,24 +173,61 @@ class Consumer:
         else:
             self._start_listeners()
 
+        self._await_startup(self.shared_registry)
+
+        event_handler._call("on_start")
+
+        workers_amount = len(self.shared_registry.keys())
+
+        log.info(
+            f"[green]Started {len(self.listeners)} listeners ({workers_amount} {'worker' if workers_amount == 1 else 'workers'})"
+        )
+
         self._halt(halt)
 
+    def _create_shared_registry(self):
+        """Create a shared registry for all workers to interact with.
+
+        Note: This must be protected by __name__ == "__main__" check, ensure consumer.start() is protected
+        or else an error will arise.
+        """
+        # Create a manager instance so all workers can have a central registry
+        manager = Manager()
+        self.shared_registry = manager.dict()
+
     def _start_listeners(self):
-        log.info(f"Starting {len(self.listeners)} listeners")
+        """Start all the listeners & their workers"""
+        workers_amount = sum(listener.details.workers for listener in self.listeners)
+        log.info(
+            f"Starting {len(self.listeners)} listeners ({workers_amount} {'worker' if workers_amount == 1 else 'workers'})"
+        )
         for listener in self.listeners:
-            listener.start()
+            listener.start(self.shared_registry)
 
     def _stop_listeners(self):
+        """Stop all the currently running listeners & workers"""
+        workers_amount = sum(len(listener.workers) for listener in self.listeners)
         log.info(
-            f"[red]Stopping {len(self.listeners)} listeners ({sum([len(listener.workers) for listener in self.listeners])} workers)"
+            f"[red]Stopping {len(self.listeners)} listeners ({workers_amount} {'worker' if workers_amount == 1 else 'workers'})"
         )
         for listener in self.listeners:
             listener.stop()
 
-        # ? We don't want to clear this list, or else when we reload some files don't get reloaded and will get cleared here
-        # self.listeners.clear()
+        event_handler._call("on_stop")
+
+    def _await_startup(self, registry):
+        """Wait for all known listeners to be started, then continue."""
+        while not all(
+            enum_value == Status.CONNECTED for enum_value in registry.values()
+        ):
+            ...
 
     def _halt(self, halt: bool):
+        """Halt the code for good
+
+        Args:
+            halt (bool): Halt or not
+        """
         try:
             while halt:
                 time.sleep(1)

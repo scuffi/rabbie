@@ -1,14 +1,18 @@
 import os
 import sys
 import signal
+
 from multiprocess import Process
+from multiprocess.managers import DictProxy
+
 from inspect import signature
 import traceback
 
-from typing import Callable, List, Any
+from typing import List, Any
 import time
 
 from .listener_details import ListenerDetails
+from .listener_status import Status
 from ...broker_types import Channel, Method, Properties
 from ...logger import logger as log
 
@@ -31,6 +35,15 @@ class Listener:
 
     def is_listening(self) -> bool:
         return all([worker.is_alive() for worker in self.workers])
+
+    def _change_status(self, registry: DictProxy, status: Status):
+        """Change the status of the process we're inside of
+
+        Args:
+            registry (DictProxy): The shared registry
+            status (Status): The new status
+        """
+        registry[os.getpid()] = status
 
     def _callback(
         self,
@@ -70,18 +83,28 @@ class Listener:
         }
 
         # Run the callback function safely, so if it errors, the listener won't stop
-        self._run_safely(self.details.callback, **arguments)
+        self._run_safely(self.details, Channel(channel), **arguments)
 
-    def _run_safely(self, callback: Callable, *args, **kwargs):
+    def _run_safely(self, details: ListenerDetails, channel: Channel, *args, **kwargs):
         """
         This function runs a callback function safely, whilst still printing any tracebacks.
         """
         try:
-            callback(*args, **kwargs)
+            # Call the function, and keep it's output incase it requires repushing to the channel
+            output = details.callback(*args, **kwargs)
+
+            # If there was data returned, we want to send this data back to the message broker
+            if output is not None:
+                # Use specified encoder and send back to same queue
+                channel.publish(
+                    body=output,
+                    queue=self.details.return_queue or self.details.queue_name,
+                    encoder=self.details.encoder,
+                )
         except Exception:
             traceback.print_exc()
 
-    def _start_worker(self, index: int):
+    def _start_worker(self, index: int, registry: DictProxy):
         # TODO: Change this function, it's ugly
         try:
             # Create a BlockingConnection into the queue
@@ -90,14 +113,29 @@ class Listener:
             # Open a channel to receive messages through
             channel = connection.channel()
 
-            channel.queue_declare(queue=self.details.queue_name)
-            channel.basic_qos(prefetch_count=1)
+            channel.queue_declare(
+                queue=self.details.queue_name,
+                passive=self.details.queue_passive,
+                durable=self.details.queue_passive,
+                exclusive=self.details.queue_exclusive,
+                auto_delete=self.details.queue_auto_delete,
+            )
+
+            channel.basic_qos(
+                prefetch_count=self.details.qos_prefetch_count,
+                prefetch_size=self.details.qos_prefetch_size,
+                global_qos=self.details.global_qos,
+            )
 
             channel.basic_consume(
                 queue=self.details.queue_name,
                 on_message_callback=self._callback,
                 auto_ack=self.details.auto_ack,
             )
+
+            # Allow for manipulation of channel before we start consuming incase we missed anything to do with configuration
+            if self.details.configuration_callback:
+                self.details.configuration_callback(channel)
 
             # TODO: Use this instead for more control of what variables to pass?
             # for method, properties, body in channel.consume(self.queue_name):
@@ -113,13 +151,31 @@ class Listener:
             # Register the signal handler for SIGTERM
             signal.signal(signal.SIGTERM, handle_sigterm)
 
+            # Only log that we've 're'connected if the worker was previously down.
+            if registry[os.getpid()] == Status.DISCONNECTED:
+                log.info(f"[{os.getpid()}] [green]Reconnected to broker.")
+
+            # We can assume now that we've connected successfully.
+            self._change_status(registry, Status.CONNECTED)
+
+            log.info(
+                f"[{os.getpid()}] [green]Listening to [bold cyan]{self.details.queue_name}[/bold cyan]"
+            )
+
             channel.start_consuming()
 
         except AMQPError:
             if self.details.restart:
-                log.error("Connection failed, retrying in 2s...")
+                if registry[os.getpid()] != Status.DISCONNECTED:
+                    log.error(
+                        f"[{os.getpid()}] [red]Connection to broker failed. Worker will reconnect when possible."
+                    )
+
+                    # Set the status of this process to failed.
+                    self._change_status(registry, Status.DISCONNECTED)
+
                 time.sleep(2)
-                self._start_worker(index)
+                self._start_worker(index, registry)
 
     def stop(self):
         """
@@ -132,7 +188,7 @@ class Listener:
             # Wait for the process to finish
             worker.join()
 
-    def start(self):
+    def start(self, registry: DictProxy):
         """
         Execute each consumer in a new process in a PoolExecutor
 
@@ -146,10 +202,10 @@ class Listener:
         self.workers.clear()
 
         for i in range(workers):
-            p = Process(target=self._start_worker, args=(i,))
+            p = Process(target=self._start_worker, args=(i, registry))
             p.start()
-            self.workers.append(p)
 
-        log.info(
-            f"[green]Started listening to [bold cyan]{self.details.queue_name}[/bold cyan] with {workers} {'workers' if workers > 1 else 'worker'}"
-        )
+            # Add the process ID to the registry
+            registry[p.pid] = Status.STARTING
+
+            self.workers.append(p)

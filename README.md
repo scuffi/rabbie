@@ -168,6 +168,39 @@ class CustomEncoder(Encoder):
         return "application/my_type"
 ```
     
+### 🎫 Event Handling
+If you want to add custom logic depending on whether or not your listeners are connected, or any error handling, you can use event handlers.
+
+Event handlers allow you to create callbacks for specific events that happen, such as on start and on stop.
+
+```python
+from rabbie import Consumer, event_handler
+
+@event_handler.register("on_start")
+def on_start():
+    print("I know all my listeners have started now!")
+
+@event_handler.register("on_stop")
+def on_stop():
+    print("All my listeners are dead")
+
+consumer = Consumer(
+    ...
+)
+
+if __name__ == "__main__":
+    consumer.start()
+```
+The defined functions will then get called when the given event is triggered behind the scenes.
+
+> ℹ️ Events can have multiple callbacks associated with them, so you can have as many on_start handlers as you please!
+
+List of current events:
+| Event ID | Trigger |
+|---|---|
+| on_start | When the application starts and all registered listeners have successfully connected. |
+| on_stop | When all active listeners have closed their connections. |
+
 ### 🖨️ Producers
 Producers allow for a simple way to publish messages to exchanges. A simple example would be like so:
 ```python
