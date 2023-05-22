@@ -107,7 +107,7 @@ class Listener:
             traceback.print_exc()
 
     def _start_worker(self, index: int, registry: DictProxy):
-        # TODO: Change this function, it's ugly
+        # TODO: Change this function, it's ugly, (change to worker.py Worker class, encapsulate all Worker requirements in there)
         try:
             # Create a BlockingConnection into the queue
             connection = pika.BlockingConnection(self.connection_parameters)
@@ -139,10 +139,6 @@ class Listener:
             if self.details.configuration_callback:
                 self.details.configuration_callback(channel)
 
-            # TODO: Use this instead for more control of what variables to pass?
-            # for method, properties, body in channel.consume(self.queue_name):
-            #         self._callback(channel, method, properties, body)
-
             # Create a signal handler to close the connection when we receive a SIGINT
             def handle_sigterm(sig, frame):
                 log.debug("Gracefully closing connection...")
@@ -163,6 +159,10 @@ class Listener:
             log.info(
                 f"[{os.getpid()}] [green]Listening to [bold cyan]{self.details.queue_name}[/bold cyan]"
             )
+
+            # TODO: Use this instead for more control of what variables to pass?
+            # for method, properties, body in channel.consume(self.details.queue_name):
+            #     self._callback(channel, method, properties, body)
 
             channel.start_consuming()
 
