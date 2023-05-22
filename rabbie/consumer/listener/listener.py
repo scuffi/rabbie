@@ -34,7 +34,7 @@ class Listener:
         self.workers: List[Process] = []
 
     def is_listening(self) -> bool:
-        return all([worker.is_alive() for worker in self.workers])
+        return all(worker.is_alive() for worker in self.workers)
 
     def _change_status(self, registry: DictProxy, status: Status):
         """Change the status of the process we're inside of
@@ -76,9 +76,7 @@ class Listener:
 
         # Match variables to their types, and pass them in. Default to body
         arguments = {
-            arg: all_arguments[sig.parameters[arg].annotation]
-            if sig.parameters[arg].annotation in all_arguments
-            else body
+            arg: all_arguments.get(sig.parameters[arg].annotation, body)
             for arg in sig.parameters.keys()
         }
 
