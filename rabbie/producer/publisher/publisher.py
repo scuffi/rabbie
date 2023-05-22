@@ -34,6 +34,7 @@ class Publisher:
         """
         self.channel.close()
         self.channel = None
+        self.connection.close()
 
     def publish(
         self,
