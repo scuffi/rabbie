@@ -85,18 +85,20 @@ class Listener:
         # Run the callback function safely, so if it errors, the listener won't stop
         self._run_safely(self.details, Channel(channel), **arguments)
 
-    def _run_safely(self, details: ListenerDetails, channel: Channel, *args, **kwargs):
+    def _run_safely(
+        self, _details: ListenerDetails, _channel: Channel, *args, **kwargs
+    ):
         """
         This function runs a callback function safely, whilst still printing any tracebacks.
         """
         try:
             # Call the function, and keep it's output incase it requires repushing to the channel
-            output = details.callback(*args, **kwargs)
+            output = _details.callback(*args, **kwargs)
 
             # If there was data returned, we want to send this data back to the message broker
             if output is not None:
                 # Use specified encoder and send back to same queue
-                channel.publish(
+                _channel.publish(
                     body=output,
                     queue=self.details.return_queue or self.details.queue_name,
                     encoder=self.details.encoder,
@@ -105,7 +107,7 @@ class Listener:
             traceback.print_exc()
 
     def _start_worker(self, index: int, registry: DictProxy):
-        # TODO: Change this function, it's ugly
+        # TODO: Change this function, it's ugly, (change to worker.py Worker class, encapsulate all Worker requirements in there)
         try:
             # Create a BlockingConnection into the queue
             connection = pika.BlockingConnection(self.connection_parameters)
@@ -137,10 +139,6 @@ class Listener:
             if self.details.configuration_callback:
                 self.details.configuration_callback(channel)
 
-            # TODO: Use this instead for more control of what variables to pass?
-            # for method, properties, body in channel.consume(self.queue_name):
-            #         self._callback(channel, method, properties, body)
-
             # Create a signal handler to close the connection when we receive a SIGINT
             def handle_sigterm(sig, frame):
                 log.debug("Gracefully closing connection...")
@@ -161,6 +159,10 @@ class Listener:
             log.info(
                 f"[{os.getpid()}] [green]Listening to [bold cyan]{self.details.queue_name}[/bold cyan]"
             )
+
+            # TODO: Use this instead for more control of what variables to pass?
+            # for method, properties, body in channel.consume(self.details.queue_name):
+            #     self._callback(channel, method, properties, body)
 
             channel.start_consuming()
 

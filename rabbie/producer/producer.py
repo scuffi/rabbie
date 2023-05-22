@@ -65,7 +65,14 @@ class Producer:
             **kwargs,
         )
 
-        self.connection = connection_type(self.connection_parameters)
+        self.connection_type = connection_type
+
+        # Assume that when connection is None we are not connected
+        self.connection: pika.BlockingConnection = None
+
+    def _is_connected(self):
+        if self.connection is None or self.connection.is_closed:
+            self.connection = self.connection_type(self.connection_parameters)
 
     def connect(self, queue: str = None, exchange: str = None, encoder: Encoder = None):
         """
@@ -88,6 +95,8 @@ class Producer:
         Returns:
           A Publisher object is being returned.
         """
+        self._is_connected()
+
         return Publisher(
             connection=self.connection,
             default_queue=queue,
