@@ -8,4 +8,4 @@ class AutoDecoder(Decoder):
         try:
             return json.loads(body)
         except ValueError:
-            return body
+            return body.decode("utf-8")
