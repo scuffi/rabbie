@@ -1,2 +1,2 @@
 from .relayed_types import *
-from .channel import Channel
+from .message import Message
