@@ -13,7 +13,7 @@ import time
 
 from .listener_details import ListenerDetails
 from .listener_status import Status
-from ...broker_types import Channel, Method, Properties
+from ...broker_types import Channel, Method, Properties, Message
 from ...logger import logger as log
 
 import pika
@@ -67,11 +67,19 @@ class Listener:
         # Get the signature of the function
         sig = signature(self.details.callback)
 
+        message = Message(
+            body=body,
+            channel=channel,
+            method=method,
+            properties=properties,
+        )
+
         all_arguments = {
             # TODO: Wrap this channel in a custom channel, that provides utility functionality over acks, nacks, publishing, etc
-            Channel: Channel(channel),
+            Channel: channel,
             Method: method,
             Properties: properties,
+            Message: message,
         }
 
         # Match variables to their types, and pass them in. Default to body
@@ -81,10 +89,10 @@ class Listener:
         }
 
         # Run the callback function safely, so if it errors, the listener won't stop
-        self._run_safely(self.details, Channel(channel), **arguments)
+        self._run_safely(self.details, message, **arguments)
 
     def _run_safely(
-        self, _details: ListenerDetails, _channel: Channel, *args, **kwargs
+        self, _details: ListenerDetails, _message: Message, *args, **kwargs
     ):
         """
         This function runs a callback function safely, whilst still printing any tracebacks.
@@ -96,7 +104,7 @@ class Listener:
             # If there was data returned, we want to send this data back to the message broker
             if output is not None:
                 # Use specified encoder and send back to same queue
-                _channel.publish(
+                _message.publish(
                     body=output,
                     queue=self.details.return_queue or self.details.queue_name,
                     encoder=self.details.encoder,
