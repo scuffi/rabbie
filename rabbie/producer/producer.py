@@ -25,6 +25,7 @@ class Producer:
         password: Optional[str] = Details.PASSWORD,
         encoder: Optional[Encoder] = AutoEncoder(),
         connection_type: pika.BaseConnection = pika.BlockingConnection,
+        connection_parameters: pika.ConnectionParameters = None,
         **kwargs,
     ):
         """
@@ -58,7 +59,7 @@ class Producer:
         credentials = pika.PlainCredentials(self._username, self._password)
 
         # Create the parameters for connection to the Queue
-        self.connection_parameters = pika.ConnectionParameters(
+        self.connection_parameters = connection_parameters or pika.ConnectionParameters(
             port=self._port,
             host=self._host,
             credentials=credentials,
