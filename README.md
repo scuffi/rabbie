@@ -1,5 +1,5 @@
 
-# <p align="center">🥕 Rabbie 🥕</p>
+# <p align="center"><img alt="Rabbie Logo" src="https://i.imgur.com/bVst4uf.png"></p>
 
 
 <p align="center">
